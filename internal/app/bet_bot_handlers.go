@@ -12,18 +12,23 @@ import (
 const dataId = "data"
 
 func HandleGetBetBot(w http.ResponseWriter, r *http.Request) {
+
+	lib.Log("Querying DB for betbot data", 5)
+
 	compressedData, err := BetBotRepository().dataRepo.findTById(dataId)
 	if err != nil {
 		api.Response.ServerError(w)
 		return
 	}
 
+	lib.Log("Decompressing Data", 5)
 	data, err := lib.GzipCompressor[betbot.FirstShotData]().Decompress(compressedData.Data)
 	if err != nil {
 		api.Response.ServerError(w)
 		return
 	}
 
+	lib.Log("Gzipping payload", 5)
 	api.Response.Gzip(w, data)
 }
 

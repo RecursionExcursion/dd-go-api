@@ -8,6 +8,7 @@ import (
 
 type ApiResponses struct {
 	Ok           func(w http.ResponseWriter)
+	OkPayload    func(w http.ResponseWriter, data any)
 	Gzip         func(w http.ResponseWriter, data any)
 	ServerError  func(w http.ResponseWriter)
 	NotFound     func(w http.ResponseWriter)
@@ -16,6 +17,15 @@ type ApiResponses struct {
 }
 
 var Response = ApiResponses{
+	OkPayload: func(w http.ResponseWriter, data any) {
+		w.WriteHeader(http.StatusOK)
+
+		err := json.NewEncoder(w).Encode(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	},
+
 	Ok: func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusOK)
 	},
