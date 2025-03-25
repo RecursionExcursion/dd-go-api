@@ -24,7 +24,7 @@ func collectTeamsAndRosters() ([]team, error) {
 }
 
 func fetchTeams() ([]team, error) {
-	tfp, err := lib.FetchAndMap[teamFetchPayload](
+	tfp, _, err := lib.FetchAndMap[teamFetchPayload](
 		func() (*http.Response, error) {
 			return http.Get(endpoints().Teams())
 		})
@@ -59,7 +59,7 @@ func compileRosterAsync(teams *[]team) error {
 
 		rosterEp := endpoints().Roster(teamId)
 
-		rosterPayload, err := lib.FetchAndMap[rosterFetchPayload](
+		rosterPayload, _, err := lib.FetchAndMap[rosterFetchPayload](
 			func() (*http.Response, error) {
 				return http.Get(rosterEp)
 			})

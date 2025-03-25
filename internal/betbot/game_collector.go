@@ -64,7 +64,7 @@ func fetchSeasonInfo(year int) (tr TimeRange, err error) {
 		return http.Get(seasonEp)
 	}
 
-	sznPayload, err := lib.FetchAndMap[seasonInfoPayload](fetchFn)
+	sznPayload, _, err := lib.FetchAndMap[seasonInfoPayload](fetchFn)
 	if err != nil {
 		return tr, err
 	}
@@ -121,7 +121,7 @@ func fetchSeasonGamesAsync(start time.Time, end time.Time) ([]game, error) {
 	gameWorker := func(ep string) {
 		defer wg.Done()
 
-		gamesPlayload, err := lib.FetchAndMap[seasonGamesFetchPayload](
+		gamesPlayload, _, err := lib.FetchAndMap[seasonGamesFetchPayload](
 			func() (*http.Response, error) {
 				return http.Get(ep)
 			})
@@ -182,7 +182,7 @@ func fetchPlaysAsync(games *[]game) error {
 		gEp := endpoints().GameData(gameId)
 		log.Println("Fetching ", gEp)
 
-		gData, err := lib.FetchAndMap[gameDataFetchPayload](func() (*http.Response, error) {
+		gData, _, err := lib.FetchAndMap[gameDataFetchPayload](func() (*http.Response, error) {
 			return http.Get(gEp)
 		})
 		if err != nil {

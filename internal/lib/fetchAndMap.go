@@ -2,28 +2,31 @@ package lib
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 )
 
-/* FetchAndMap sends and recieves http request and maps it to T via JSON */
-func FetchAndMap[T any](fetch func() (*http.Response, error)) (T, error) {
+/* FetchAndMap sends and receives http request and maps it to T via JSON */
+func FetchAndMap[T any](fetch func() (*http.Response, error)) (T, *http.Response, error) {
 	var ret T
 
 	res, err := fetch()
 	if err != nil {
-		return ret, err
+		return ret, res, err
 	}
 	defer res.Body.Close()
 
+	fmt.Println(res)
+
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
-		return ret, err
+		return ret, res, err
 	}
 
 	if err := json.Unmarshal(body, &ret); err != nil {
-		return ret, err
+		return ret, res, err
 	}
 
-	return ret, nil
+	return ret, res, nil
 }

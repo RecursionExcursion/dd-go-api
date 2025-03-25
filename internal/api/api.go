@@ -6,29 +6,39 @@ import (
 )
 
 type APIServer struct {
-	addr       string
+	Addr   string
+	Server http.Server
+	Router *http.ServeMux
+
 	initalized bool
-	server     http.Server
-	router     *http.ServeMux
+}
+
+type HandlerFn = func(http.ResponseWriter, *http.Request)
+type Middleware = func(HandlerFn) HandlerFn
+
+type RouteHandler struct {
+	MethodAndPath string
+	Handler       HandlerFn
+	Middleware    []Middleware
 }
 
 func NewApiServer(addr string) *APIServer {
 	return &APIServer{
-		addr:       addr,
+		Addr:       addr,
 		initalized: false,
 	}
 }
 
 func (s *APIServer) Init(routes []RouteHandler) {
-	s.router = http.NewServeMux()
+	s.Router = http.NewServeMux()
 
 	for _, r := range routes {
-		s.router.HandleFunc(r.handleHttp())
+		s.Router.HandleFunc(r.handleHttp())
 	}
 
-	s.server = http.Server{
-		Addr:    s.addr,
-		Handler: s.router,
+	s.Server = http.Server{
+		Addr:    s.Addr,
+		Handler: s.Router,
 	}
 
 	s.initalized = true
@@ -40,6 +50,28 @@ func (s *APIServer) ListenAndServe() error {
 		panic("server not initalzed")
 	}
 
-	log.Printf("Server is listening on %s", s.addr)
-	return s.server.ListenAndServe()
+	log.Printf("Server is listening on %s", s.Addr)
+	return s.Server.ListenAndServe()
+}
+
+func (rh *RouteHandler) handleHttp() (string, func(http.ResponseWriter, *http.Request)) {
+
+	if rh.Handler == nil {
+		panic("handler is nil for route " + rh.MethodAndPath)
+	}
+
+	mwPipe := pipeMiddleware(rh.Middleware...)
+	return rh.MethodAndPath, mwPipe(rh.Handler)
+}
+
+/* Middleware */
+
+/* pipeMiddleware passes request through middleware fn from left to right */
+func pipeMiddleware(mws ...Middleware) Middleware {
+	return func(final HandlerFn) HandlerFn {
+		for i := len(mws) - 1; i >= 0; i-- {
+			final = mws[i](final)
+		}
+		return final
+	}
 }

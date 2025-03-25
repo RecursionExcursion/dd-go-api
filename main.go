@@ -47,7 +47,7 @@ func createRoutes() []api.RouteHandler {
 		MethodAndPath: "GET /test",
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("TEST")
-			api.Response.OkPayload(w, "foo")
+			api.Response.Ok(w, "test")
 		},
 		Middleware: bbMwChain,
 	}

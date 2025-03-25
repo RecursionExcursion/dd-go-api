@@ -86,11 +86,17 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			addr := r.RemoteAddr
 
-			data, err := lib.FetchAndMap[GeoLimitData](func() (resp *http.Response, err error) {
+			data, res, err := lib.FetchAndMap[GeoLimitData](func() (resp *http.Response, err error) {
 				return http.Get(fmt.Sprintf("http://ip-api.com/json/%v", addr))
 			})
 			if err != nil {
-				panic(err)
+				if res.StatusCode == 429 {
+					api.Response.ServerError(w, "too many requests, please try again later")
+				} else {
+					lib.LogError(addr, err, "GeoLimitMW", "FetchAndMap")
+					api.Response.ServerError(w, "something went wrong, please try again later")
+				}
+				return
 			}
 
 			isBlackListed := func() bool {
@@ -115,7 +121,7 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 			}
 
 			if isBlackListed() || !isWhitelisted() {
-				api.Response.Forbidden(w)
+				api.Response.Forbidden(w, "")
 				return
 			}
 
