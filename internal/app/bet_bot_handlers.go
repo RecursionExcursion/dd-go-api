@@ -57,13 +57,13 @@ var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http
 	ok, err := BetBotRepository().dataRepo.saveT(compressed)
 	if err != nil {
 		lib.Log(err.Error(), -1)
-		api.Response.ServerError(w, "")
+		api.Response.ServerError(w, "could not save data")
 		return
 	}
 
 	if ok {
-		api.Response.Ok(w, "")
+		api.Response.Ok(w, "Data revalidated successfully")
 	} else {
-		api.Response.ServerError(w, "")
+		api.Response.ServerError(w, "Data could not be revalidated")
 	}
 }
