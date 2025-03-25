@@ -2,3 +2,4 @@
 *.exe
 /test
 /rest
+.vscode/

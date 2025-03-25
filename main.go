@@ -31,6 +31,13 @@ func createRoutes() []api.RouteHandler {
 		app.KeyAuthMW(lib.EnvGet("BB_API_KEY")),
 	}
 
+	var getbaseRoute = api.RouteHandler{
+		MethodAndPath: "GET /",
+		Handler: api.HandlerFn(func(w http.ResponseWriter, r *http.Request) {
+			api.Response.Ok(w, "dd-api")
+		}),
+	}
+
 	var getBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot",
 		Handler:       app.HandleGetBetBot,
@@ -52,7 +59,7 @@ func createRoutes() []api.RouteHandler {
 		Middleware: bbMwChain,
 	}
 
-	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, testRoute}
+	return []api.RouteHandler{getbaseRoute, getBetBotRoute, revalidateBetBotRoute, testRoute}
 }
 
 func osInfo() {

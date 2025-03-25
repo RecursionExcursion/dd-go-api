@@ -2,7 +2,6 @@ package lib
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -16,8 +15,6 @@ func FetchAndMap[T any](fetch func() (*http.Response, error)) (T, *http.Response
 		return ret, res, err
 	}
 	defer res.Body.Close()
-
-	fmt.Println(res)
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
