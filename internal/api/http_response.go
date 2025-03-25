@@ -12,18 +12,14 @@ type ApiResponses struct {
 	Gzip         func(w http.ResponseWriter, data any)
 	ServerError  func(w http.ResponseWriter)
 	NotFound     func(w http.ResponseWriter)
-	Unauthorized func(w http.ResponseWriter)
+	Unauthorized func(w http.ResponseWriter, msgs ...string)
 	Forbidden    func(w http.ResponseWriter)
 }
 
 var Response = ApiResponses{
 	OkPayload: func(w http.ResponseWriter, data any) {
 		w.WriteHeader(http.StatusOK)
-
-		err := json.NewEncoder(w).Encode(data)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-		}
+		encodeToJson(data, w)
 	},
 
 	Ok: func(w http.ResponseWriter) {
@@ -53,11 +49,21 @@ var Response = ApiResponses{
 		w.WriteHeader(http.StatusNotFound)
 	},
 
-	Unauthorized: func(w http.ResponseWriter) {
+	Unauthorized: func(w http.ResponseWriter, msgs ...string) {
 		w.WriteHeader(http.StatusUnauthorized)
+		if len(msgs) > 0 {
+			encodeToJson(msgs, w)
+		}
 	},
 
 	Forbidden: func(w http.ResponseWriter) {
 		w.WriteHeader(http.StatusForbidden)
 	},
+}
+
+func encodeToJson(data any, w http.ResponseWriter) {
+	err := json.NewEncoder(w).Encode(data)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }

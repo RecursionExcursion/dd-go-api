@@ -19,18 +19,27 @@ func main() {
 }
 
 func createRoutes() []api.RouteHandler {
-	mwChain := []api.Middleware{app.LoggerMW, app.RateLimitMW, app.AuthMW}
+	geoParams := app.GeoLimitParams{
+		WhitelistCountryCodes: []string{"US"},
+	}
+
+	bbMwChain := []api.Middleware{
+		app.LoggerMW,
+		app.GeoLimitMW(geoParams),
+		app.RateLimitMW,
+		app.KeyAuthMW(lib.EnvGet("BB_API_KEY")),
+	}
 
 	var getBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot",
 		Handler:       app.HandleGetBetBot,
-		Middleware:    mwChain,
+		Middleware:    bbMwChain,
 	}
 
 	var revalidateBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot/revalidate",
 		Handler:       app.HandleBetBotRevalidation,
-		Middleware:    mwChain,
+		Middleware:    bbMwChain,
 	}
 
 	var testRoute = api.RouteHandler{
@@ -39,6 +48,7 @@ func createRoutes() []api.RouteHandler {
 			fmt.Println("TEST")
 			api.Response.OkPayload(w, "foo")
 		},
+		Middleware: bbMwChain,
 	}
 
 	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, testRoute}
