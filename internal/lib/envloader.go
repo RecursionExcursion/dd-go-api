@@ -61,6 +61,10 @@ func loadOsEnv(filename string) error {
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 
+		/* TODO Need to impl logic to cut out trailing comments
+		 * '#' should only be permitted inside quotes
+		 * if not then everything after needs to be treated as a comment
+		 */
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}

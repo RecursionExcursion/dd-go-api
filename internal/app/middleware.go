@@ -21,9 +21,7 @@ func LoggerMW(next api.HandlerFn) api.HandlerFn {
 		accessedPath := r.Host + r.RequestURI
 		time := time.Now().Format("2006-01-02 15:04:05")
 
-		logMsg := fmt.Sprintf("%v accessed %v at %v", remote, accessedPath, time)
-
-		log.Println(logMsg)
+		log.Printf("%v accessed %v at %v", remote, accessedPath, time)
 
 		next(w, r)
 	}
@@ -45,10 +43,9 @@ func KeyAuthMW(key string) api.Middleware {
 	}
 }
 
-// refil rate 5/sec, total bucket size is 10
-var limiter = rate.NewLimiter(5, 10)
-
 func RateLimitMW(next api.HandlerFn) api.HandlerFn {
+	// refil rate 5/sec, total bucket size is 10
+	var limiter = rate.NewLimiter(5, 10)
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("RL MW")
 		if !limiter.Allow() {
@@ -65,6 +62,8 @@ type GeoLimitParams struct {
 
 	WhitelistContinentCodes []string
 	BlacklistContinentCodes []string
+
+	BlacklistZipCodes []string
 }
 
 func GeoLimitMW(params GeoLimitParams) api.Middleware {
@@ -85,8 +84,7 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 		}
 
 		return func(w http.ResponseWriter, r *http.Request) {
-			addr := "24.39.0.1"
-			// addr := r.RemoteAddr
+			addr := r.RemoteAddr
 
 			data, err := lib.FetchAndMap[GeoLimitData](func() (resp *http.Response, err error) {
 				return http.Get(fmt.Sprintf("http://ip-api.com/json/%v", addr))
@@ -95,20 +93,30 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 				panic(err)
 			}
 
-			//Handle blacklists (Contains -> 403)
-			if slices.Contains(params.BlacklistCountryCodes, data.CountryCode) ||
-				slices.Contains(params.BlacklistContinentCodes, data.ContinentCode) {
-				api.Response.Forbidden(w)
-				return
+			isBlackListed := func() bool {
+				return slices.Contains(params.BlacklistCountryCodes, data.CountryCode) ||
+					slices.Contains(params.BlacklistContinentCodes, data.ContinentCode)
 			}
 
-			if params.WhitelistContinentCodes != nil || params.WhitelistCountryCodes != nil {
-				//Handle whitelists (Does not contain -> 403)
-				if !slices.Contains(params.WhitelistCountryCodes, data.CountryCode) ||
-					!slices.Contains(params.WhitelistContinentCodes, data.ContinentCode) {
-					api.Response.Forbidden(w)
-					return
+			isWhitelisted := func() bool {
+				if params.WhitelistContinentCodes != nil {
+					if !slices.Contains(params.WhitelistContinentCodes, data.ContinentCode) {
+						return false
+					}
 				}
+
+				if params.WhitelistCountryCodes != nil {
+					if !slices.Contains(params.WhitelistCountryCodes, data.CountryCode) {
+						return false
+					}
+				}
+
+				return true
+			}
+
+			if isBlackListed() || !isWhitelisted() {
+				api.Response.Forbidden(w)
+				return
 			}
 
 			next(w, r)

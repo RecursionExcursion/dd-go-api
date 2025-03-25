@@ -19,8 +19,9 @@ func main() {
 }
 
 func createRoutes() []api.RouteHandler {
+
 	geoParams := app.GeoLimitParams{
-		WhitelistCountryCodes: []string{"US"},
+		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
 	}
 
 	bbMwChain := []api.Middleware{
