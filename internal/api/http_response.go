@@ -70,10 +70,10 @@ func zip(w http.ResponseWriter, status int, data ...any) {
 	defer gz.Close()
 
 	//json -> gz -> res
+	w.WriteHeader(status)
 	err := json.NewEncoder(gz).Encode(data)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(status)
 }
