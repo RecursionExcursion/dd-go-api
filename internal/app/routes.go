@@ -1,10 +1,13 @@
 package app
 
 import (
-	"fmt"
+	"log"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
+	"github.com/recursionexcursion/dd-go-api/internal/betbot"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
@@ -24,8 +27,34 @@ func routes() []api.RouteHandler {
 	var testRoute = api.RouteHandler{
 		MethodAndPath: "GET /test",
 		Handler: func(w http.ResponseWriter, r *http.Request) {
-			fmt.Println("TEST")
-			api.Response.Ok(w, "test")
+
+			//collect data
+			fsd, err := betbot.CollectData()
+			if err != nil {
+				api.Response.ServerError(w)
+				return
+			}
+
+			log.Println("In handlers")
+			betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
+
+			packagedData, err := betbot.NewStatCalculator(fsd).CalcAndPackage()
+			if err != nil {
+				lib.LogError("", err)
+				api.Response.ServerError(w)
+				return
+			}
+
+			lib.Log("Gzipping payload", 5)
+			api.Response.Gzip(w, 200,
+				struct {
+					Meta string
+					Data []betbot.PackagedPlayer
+				}{
+					Meta: strconv.FormatInt(time.Now().UnixMilli(), 10),
+					Data: packagedData,
+				},
+			)
 		},
 	}
 

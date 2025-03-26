@@ -29,13 +29,12 @@ func GzipCompressor[T any]() genericGzipCompressor[T] {
 				return "", err
 			}
 
-			fmt.Printf("Compressed size: %d bytes\n", buf.Len())
-
-			//close writer befor accessing buf.Bytes()
+			//close writer before accessing buf.Bytes()
 			if err := gzipWriter.Close(); err != nil {
 				return "", err
 			}
 
+			fmt.Printf("Compressed size: %d bytes\n", buf.Len())
 			return bytesToBase64(buf.Bytes()), nil
 		},
 		Decompress: func(s string) (T, error) {

@@ -2,7 +2,9 @@ package app
 
 import (
 	"io"
+	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
@@ -21,14 +23,34 @@ var HandleGetBetBot api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 	}
 
 	lib.Log("Decompressing Data", 5)
-	data, err := lib.GzipCompressor[betbot.FirstShotData]().Decompress(compressedData.Data)
+	decompressedDbData, err := lib.GzipCompressor[betbot.FirstShotData]().Decompress(compressedData.Data)
 	if err != nil {
-		api.Response.ServerError(w, "")
+		api.Response.ServerError(w)
+		return
+	}
+
+	// log.Printf("%+v", decompressedDbData)
+	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705613))
+
+	lib.Log("Compiling stats", 5)
+	packagedData, err := betbot.NewStatCalculator(decompressedDbData).CalcAndPackage()
+	if err != nil {
+		lib.LogError("", err)
+		api.Response.ServerError(w)
 		return
 	}
 
 	lib.Log("Gzipping payload", 5)
-	api.Response.Gzip(w, 200, data)
+	api.Response.Gzip(w, 200,
+		struct {
+			meta string
+			data []betbot.PackagedPlayer
+		}{
+			meta: decompressedDbData.Created,
+			data: packagedData,
+		},
+	)
+
 }
 
 var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
@@ -36,9 +58,12 @@ var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http
 	//collect data
 	fsd, err := betbot.CollectData()
 	if err != nil {
-		api.Response.ServerError(w, "")
+		api.Response.ServerError(w)
 		return
 	}
+
+	log.Println("In handlers")
+	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	//compress data
 	compressedData, err := lib.GzipCompressor[betbot.FirstShotData]().Compress(fsd)

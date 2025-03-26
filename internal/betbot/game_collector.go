@@ -91,7 +91,8 @@ func fetchSeasonInfo(year int) (tr TimeRange, err error) {
 	now := time.Now()
 
 	if endTime.After(now) {
-		endTime = now
+		oneDayAgo := now.AddDate(0, 0, -1)
+		endTime = oneDayAgo
 	}
 
 	tr = TimeRange{
@@ -180,7 +181,6 @@ func fetchPlaysAsync(games *[]game) error {
 		defer wg.Done()
 
 		gEp := endpoints().GameData(gameId)
-		log.Println("Fetching ", gEp)
 
 		gData, _, err := lib.FetchAndMap[gameDataFetchPayload](func() (*http.Response, error) {
 			return http.Get(gEp)
@@ -220,16 +220,19 @@ func fetchPlaysAsync(games *[]game) error {
 		for i := range *games {
 			g := &(*games)[i]
 			if g.Id == gdDTO.gameId {
+
 				firstPointsPlay, err := extractFirstPoints(gdDTO.gameData.Plays)
 				if err != nil {
 					log.Printf("%v for game:%v", err.Error(), gdDTO.gameId)
 				}
+
 				g.TrackedEvents.FirstScore = firstPointsPlay
 				firstShotPlay, err := extractFirstShotAttempt(gdDTO.gameData.Plays)
 				if err != nil {
 					log.Printf("%v for game:%v", err.Error(), gdDTO.gameId)
 				}
 				g.TrackedEvents.FirstShotAttempt = firstShotPlay
+
 				break
 			}
 		}

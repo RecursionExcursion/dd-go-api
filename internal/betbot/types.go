@@ -174,9 +174,13 @@ type play struct {
 		Id string `json:"id"`
 	} `json:"team"`
 
-	Participants []struct {
-		Athlete struct {
-			Id string `json:"id"`
-		} `json:"athlete"`
-	} `json:"participants"`
+	Participants []Participant `json:"participants"`
+}
+
+type Participant struct {
+	Athlete athlete `json:"athlete"`
+}
+
+type Athelete struct {
+	Id string `json:"id"`
 }
