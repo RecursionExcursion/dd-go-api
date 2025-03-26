@@ -10,22 +10,30 @@ type response = func(http.ResponseWriter, ...any)
 type customResponse = func(http.ResponseWriter, int, ...any)
 
 type ApiResponses struct {
-	Ok, ServerError, NotFound, Unauthorized, Forbidden, TooManyRequests response
-	Send                                                                customResponse
-	Gzip                                                                func(w http.ResponseWriter, status int, data ...any)
+	Ok              response
+	ServerError     response
+	NotFound        response
+	Unauthorized    response
+	Forbidden       response
+	TooManyRequests response
+	BadRequest      response
+	Send            customResponse
+	Gzip            func(w http.ResponseWriter, status int, data ...any)
 }
 
 var Response = ApiResponses{
+	/* 100 */
+
+	/* 200 */
 	Ok: func(w http.ResponseWriter, data ...any) {
 		send(w, 200, data)
 	},
 
-	ServerError: func(w http.ResponseWriter, data ...any) {
-		send(w, http.StatusInternalServerError, data)
-	},
+	/* 300 */
 
-	NotFound: func(w http.ResponseWriter, data ...any) {
-		send(w, http.StatusNotFound, data)
+	/* 400 */
+	BadRequest: func(w http.ResponseWriter, data ...any) {
+		send(w, http.StatusBadRequest, data)
 	},
 
 	Unauthorized: func(w http.ResponseWriter, data ...any) {
@@ -36,16 +44,26 @@ var Response = ApiResponses{
 		send(w, http.StatusForbidden, data)
 	},
 
+	NotFound: func(w http.ResponseWriter, data ...any) {
+		send(w, http.StatusNotFound, data)
+	},
+
 	TooManyRequests: func(w http.ResponseWriter, data ...any) {
 		send(w, http.StatusTooManyRequests, data)
 	},
 
-	Gzip: func(w http.ResponseWriter, status int, data ...any) {
-		zip(w, status, data...)
+	/* 500 */
+	ServerError: func(w http.ResponseWriter, data ...any) {
+		send(w, http.StatusInternalServerError, data)
 	},
 
+	/* Misc */
 	Send: func(w http.ResponseWriter, status int, data ...any) {
 		send(w, status, data)
+	},
+
+	Gzip: func(w http.ResponseWriter, status int, data ...any) {
+		zip(w, status, data...)
 	},
 }
 

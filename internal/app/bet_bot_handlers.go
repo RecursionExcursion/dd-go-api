@@ -1,6 +1,7 @@
 package app
 
 import (
+	"io"
 	"net/http"
 	"time"
 
@@ -8,8 +9,6 @@ import (
 	"github.com/recursionexcursion/dd-go-api/internal/betbot"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
-
-const dataId = "data"
 
 var HandleGetBetBot api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
@@ -66,4 +65,52 @@ var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http
 	} else {
 		api.Response.ServerError(w, "Data could not be revalidated")
 	}
+}
+
+var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+
+	type LoginPayload struct {
+		Username string
+		Password string
+	}
+
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		api.Response.ServerError(w, "Failed to read body")
+		return
+	}
+
+	pl, err := lib.Map[LoginPayload](bodyBytes)
+	if err != nil {
+		api.Response.ServerError(w, "Failed to read body")
+		return
+	}
+
+	/* Validate body */
+	if pl.Username == "" || pl.Password == "" {
+		api.Response.BadRequest(w)
+		return
+	}
+
+	usr, err := BetBotRepository().userRepo.findFirst()
+	if err != nil {
+		api.Response.NotFound(w)
+		return
+	}
+
+	if usr.Username != pl.Username || usr.Password != pl.Password {
+		api.Response.Unauthorized(w)
+		return
+	}
+
+	jwtClaims := make(map[string]any)
+	jwtClaims["sub"] = usr.Username
+
+	jwt, err := createJWT(jwtClaims, 48)
+	if err != nil {
+		api.Response.ServerError(w)
+		return
+	}
+
+	api.Response.Ok(w, jwt)
 }

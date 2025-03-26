@@ -15,6 +15,7 @@ import (
 
 type repo[T any] struct {
 	findTById func(string) (T, error)
+	findFirst func() (T, error)
 	saveT     func(T) (bool, error)
 }
 
@@ -65,6 +66,26 @@ func BetBotRepository() struct {
 					}
 					return true, nil
 				})
+			},
+			findFirst: func() (betbot.User, error) {
+				return mongoQuery(
+					userConn, func(c *mongo.Collection) (betbot.User, error) {
+						// res := c.FindOne(context.TODO())
+
+						jsn, err := bsontoJson().SR(c.FindOne(context.Background(), bson.M{}))
+						if err != nil {
+							return betbot.User{}, err
+						}
+						var user betbot.User
+						if err := json.Unmarshal(jsn, &user); err != nil {
+							log.Println("Error mapping user")
+							return betbot.User{}, err
+						}
+
+						return user, nil
+
+					},
+				)
 			},
 		}
 	}
