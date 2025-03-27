@@ -9,7 +9,7 @@ import (
 	"github.com/recursionexcursion/dd-go-api/internal/wsd"
 )
 
-var getWsdHomeHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	bodyBytes, err := io.ReadAll(r.Body)
@@ -58,4 +58,8 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 		panic(err)
 	}
 	api.Response.StreamBytes(w, 200, binBytes, name)
+}
+
+var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	api.Response.Ok(w, []string{"win", "lin", "dar"})
 }

@@ -103,11 +103,12 @@ func betbotRoutes() []api.RouteHandler {
 func wsdRoutes() []api.RouteHandler {
 
 	mwchains := mwChainMap()
+	keyChain := mwchains["wsd-key-chain"]
 
 	var postWsdHome = api.RouteHandler{
-		MethodAndPath: "POST /wsd",
-		Handler:       getWsdHomeHandler,
-		Middleware:    mwchains["wsd-key-chain"],
+		MethodAndPath: "POST /wsd/build",
+		Handler:       postWsdBuildHandler,
+		Middleware:    keyChain,
 	}
 
 	getWsdTest := api.RouteHandler{
@@ -116,7 +117,21 @@ func wsdRoutes() []api.RouteHandler {
 		Middleware:    mwchains["global"],
 	}
 
-	return []api.RouteHandler{postWsdHome, getWsdTest}
+	getSupportedOs := api.RouteHandler{
+		MethodAndPath: "GET /wsd/os",
+		Handler:       getSupportedOsHandler,
+		Middleware:    keyChain,
+	}
+
+	wakeup := api.RouteHandler{
+		MethodAndPath: "GET /wsd/wakeup",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			api.Response.Ok(w)
+		},
+		Middleware: keyChain,
+	}
+
+	return []api.RouteHandler{postWsdHome, getWsdTest, getSupportedOs, wakeup}
 }
 
 var mwChainMap = func() func() map[string][]api.Middleware {
