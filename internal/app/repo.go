@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 
 	"github.com/recursionexcursion/dd-go-api/internal/betbot"
@@ -47,15 +46,18 @@ func BetBotRepository() struct {
 					userConn,
 					func(c *mongo.Collection) (betbot.User, error) {
 						res := c.FindOne(context.TODO(), query)
-						jsn, err := bsontoJson().SR(res)
-						if err != nil {
-							return betbot.User{}, err
-						}
+
 						var user betbot.User
-						if err := json.Unmarshal(jsn, &user); err != nil {
-							log.Println("Error mapping user")
+						err := res.Decode(&user)
+						if err == mongo.ErrNoDocuments {
+							log.Println("No document found")
 							return betbot.User{}, err
 						}
+						if err != nil {
+							log.Println("Error decoding from Mongo:", err)
+							return betbot.User{}, err
+						}
+
 						return user, nil
 					})
 			},
@@ -71,15 +73,16 @@ func BetBotRepository() struct {
 			findFirst: func() (betbot.User, error) {
 				return mongoQuery(
 					userConn, func(c *mongo.Collection) (betbot.User, error) {
-						// res := c.FindOne(context.TODO())
+						res := c.FindOne(context.TODO(), bson.M{})
 
-						jsn, err := bsontoJson().SR(c.FindOne(context.Background(), bson.M{}))
-						if err != nil {
+						var user betbot.User
+						err := res.Decode(&user)
+						if err == mongo.ErrNoDocuments {
+							log.Println("No document found")
 							return betbot.User{}, err
 						}
-						var user betbot.User
-						if err := json.Unmarshal(jsn, &user); err != nil {
-							log.Println("Error mapping user")
+						if err != nil {
+							log.Println("Error decoding from Mongo:", err)
 							return betbot.User{}, err
 						}
 
@@ -102,29 +105,18 @@ func BetBotRepository() struct {
 
 				return mongoQuery(dataConn, func(c *mongo.Collection) (betbot.CompressedFsData, error) {
 					res := c.FindOne(context.TODO(), query)
-					// jsn, err := bsontoJson().SR(res)
-					// if err != nil {
-					// 	return betbot.CompressedFsData{}, err
-					// }
-					// var fsData betbot.CompressedFsData
-					// if err := json.Unmarshal(jsn, &fsData); err != nil {
-					// 	log.Println("Error mapping user")
-					// 	return betbot.CompressedFsData{}, err
-					// }
 
 					var data betbot.CompressedFsData
 					err := res.Decode(&data)
 					if err == mongo.ErrNoDocuments {
 						log.Println("No document found")
-						return betbot.CompressedFsData{}, nil // or return error, depending on your app
+						return betbot.CompressedFsData{}, err
 					}
 					if err != nil {
 						log.Println("Error decoding from Mongo:", err)
 						return betbot.CompressedFsData{}, err
 					}
 					return data, nil
-
-					// return fsData, nil
 				})
 
 			},

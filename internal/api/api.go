@@ -30,6 +30,10 @@ func NewApiServer(addr string) *APIServer {
 }
 
 func (s *APIServer) Init(routes []RouteHandler) {
+	defer func() {
+		s.initalized = true
+	}()
+
 	s.Router = http.NewServeMux()
 
 	for _, r := range routes {
@@ -40,9 +44,6 @@ func (s *APIServer) Init(routes []RouteHandler) {
 		Addr:    s.Addr,
 		Handler: s.Router,
 	}
-
-	s.initalized = true
-
 }
 
 func (s *APIServer) ListenAndServe() error {
@@ -59,14 +60,12 @@ func (rh *RouteHandler) handleHttp() (string, func(http.ResponseWriter, *http.Re
 	if rh.Handler == nil {
 		panic("handler is nil for route " + rh.MethodAndPath)
 	}
-
-	mwPipe := pipeMiddleware(rh.Middleware...)
-	return rh.MethodAndPath, mwPipe(rh.Handler)
+	return rh.MethodAndPath, pipeMiddleware(rh.Middleware...)(rh.Handler)
 }
 
 /* Middleware */
 
-/* pipeMiddleware passes request through middleware fn from left to right */
+/* pipeMiddleware passes request through middleware fns from left to right */
 func pipeMiddleware(mws ...Middleware) Middleware {
 	return func(final HandlerFn) HandlerFn {
 		for i := len(mws) - 1; i >= 0; i-- {

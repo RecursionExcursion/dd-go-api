@@ -176,7 +176,7 @@ var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 	jwtClaims := make(map[string]any)
 	jwtClaims["sub"] = usr.Username
 
-	jwt, err := createJWT(jwtClaims, 48)
+	jwt, err := createJWT(jwtClaims, 48, lib.EnvGet("BB_JWT_SECRET"))
 	if err != nil {
 		api.Response.ServerError(w)
 		return

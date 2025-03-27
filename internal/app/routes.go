@@ -67,40 +67,76 @@ func routes() []api.RouteHandler {
 }
 
 func betbotRoutes() []api.RouteHandler {
-	geoParams := GeoLimitParams{
-		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
-	}
 
-	bbMwChain := []api.Middleware{
-		LoggerMW,
-		GeoLimitMW(geoParams),
-		RateLimitMW,
-		KeyAuthMW(lib.EnvGet("BB_API_KEY")),
-	}
+	chains := mwChainMap()
+	jwtChain := chains["bb-jwt-chain"]
+	apiKeyChain := chains["bb-key-chain"]
 
 	var getBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot",
 		Handler:       HandleBBGet,
-		Middleware:    bbMwChain,
+		Middleware:    jwtChain,
 	}
 
 	var revalidateBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot/revalidate",
 		Handler:       HandleGetBBRevalidation,
-		Middleware:    bbMwChain,
+		Middleware:    jwtChain,
 	}
 
 	var bbRevalidateAndZip = api.RouteHandler{
 		MethodAndPath: "GET /betbot/zip",
 		Handler:       HandleBBValidateAndZip,
-		Middleware:    bbMwChain,
+		Middleware:    jwtChain,
 	}
 
 	var loginBBUserRoute = api.RouteHandler{
-		MethodAndPath: "POST /user",
+		MethodAndPath: "POST /user/login",
 		Handler:       HandleUserLogin,
-		Middleware:    bbMwChain,
+		Middleware:    apiKeyChain,
 	}
 
 	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, loginBBUserRoute, bbRevalidateAndZip}
 }
+
+// func createMiddlewareChains() map[string][]api.Middleware {
+// 	geoParams := GeoLimitParams{
+// 		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
+// 	}
+
+// 	globalMWChain := []api.Middleware{
+// 		LoggerMW,
+// 		GeoLimitMW(geoParams),
+// 		RateLimitMW,
+// 	}
+
+// 	mwChainMap := map[string][]api.Middleware{
+// 		"global":       globalMWChain,
+// 		"bb-jwt-chain": append(globalMWChain, JWTAuthMW(lib.EnvGet("BB_JWT_SECRET"))),
+// 		"bb-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGet("BB_API_KEY"))),
+// 	}
+
+// 	return mwChainMap
+// }
+
+var mwChainMap = func() func() map[string][]api.Middleware {
+	geoParams := GeoLimitParams{
+		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
+	}
+
+	globalMWChain := []api.Middleware{
+		LoggerMW,
+		GeoLimitMW(geoParams),
+		RateLimitMW,
+	}
+
+	mwChainMap := map[string][]api.Middleware{
+		"global":       globalMWChain,
+		"bb-jwt-chain": append(globalMWChain, JWTAuthMW(lib.EnvGet("BB_JWT_SECRET"))),
+		"bb-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGet("BB_API_KEY"))),
+	}
+
+	return func() map[string][]api.Middleware {
+		return mwChainMap
+	}
+}()

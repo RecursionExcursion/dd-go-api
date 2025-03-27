@@ -43,6 +43,26 @@ func KeyAuthMW(key string) api.Middleware {
 	}
 }
 
+func JWTAuthMW(key string) api.Middleware {
+	return func(next api.HandlerFn) api.HandlerFn {
+		return func(w http.ResponseWriter, r *http.Request) {
+			token := r.Header.Get(("Authorization"))
+			parts := strings.SplitN(token, " ", 2)
+
+			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
+				api.Response.Unauthorized(w, "Malformed token")
+				return
+			}
+			if isValid := validateJWT(parts[1], lib.EnvGet("BB_JWT_SECRET")); !isValid {
+				api.Response.Unauthorized(w, "Invalid token")
+				return
+			}
+
+			next(w, r)
+		}
+	}
+}
+
 func RateLimitMW(next api.HandlerFn) api.HandlerFn {
 	// refil rate 5/sec, total bucket size is 10
 	var limiter = rate.NewLimiter(5, 10)
