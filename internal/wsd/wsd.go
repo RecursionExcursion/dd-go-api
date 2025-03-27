@@ -14,6 +14,7 @@ type CreateExeParams struct {
 	Commands []string
 }
 
+// TODO update logs to use lib.Log()
 func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 
 	tempDir, err := CreateTempDir("", "go-app")
