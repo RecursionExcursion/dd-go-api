@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
 type CreateExeParams struct {
@@ -16,13 +18,13 @@ func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 
 	tempDir, err := CreateTempDir("", "go-app")
 	if err != nil {
-		panic(err)
+		return nil, "", err
 	}
 	defer os.RemoveAll(tempDir)
 
-	f, err := CreateTemp(tempDir, "foo")
+	f, err := CreateTempFile(tempDir, "foo")
 	if err != nil {
-		panic(err)
+		return nil, "", err
 	}
 
 	err = GenerateScript(f, params.Commands...)
@@ -30,10 +32,11 @@ func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 		return nil, "", err
 	}
 
+	// BUILD go.mod, must be done before the exe bin is created or it will fail
 	modInit := createExecCmd(tempDir, "go", "mod", "init", "tmp.com/tmp")
 	if out, err := modInit.CombinedOutput(); err != nil {
 		fmt.Println("go mod init failed:", string(out))
-		panic(err)
+		return nil, "", err
 	}
 
 	arc := compilationPairs[params.Arch]
@@ -55,16 +58,14 @@ func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 	output, err := binCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Build failed:", string(output))
-		panic(err)
+		return nil, "", err
 	}
 
-	fmt.Println("Build successful. Binary at:", binPath)
-
-	ReadDir(tempDir)
+	lib.Log(fmt.Sprintf("Build successful. Binary at:%v", binPath), 5)
 
 	inMemBin, err := os.ReadFile(binPath)
 	if err != nil {
-		panic(err)
+		return nil, "", err
 	}
 
 	return inMemBin, exeName, nil
