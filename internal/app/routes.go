@@ -18,7 +18,7 @@ func routes() []api.RouteHandler {
 	var getbaseRoute = api.RouteHandler{
 		MethodAndPath: "GET /",
 		Handler: api.HandlerFn(func(w http.ResponseWriter, r *http.Request) {
-			api.Response.Ok(w, "dd-api")
+			api.Response.Ok(w, "API Status: Healthy")
 		}),
 	}
 
@@ -104,13 +104,19 @@ func wsdRoutes() []api.RouteHandler {
 
 	mwchains := mwChainMap()
 
-	var getWsdHome = api.RouteHandler{
-		MethodAndPath: "GET /wsd",
+	var postWsdHome = api.RouteHandler{
+		MethodAndPath: "POST /wsd",
 		Handler:       getWsdHomeHandler,
+		Middleware:    mwchains["wsd-key-chain"],
+	}
+
+	getWsdTest := api.RouteHandler{
+		MethodAndPath: "GET /wsd/test",
+		Handler:       getWsdTestHandler,
 		Middleware:    mwchains["global"],
 	}
 
-	return []api.RouteHandler{getWsdHome}
+	return []api.RouteHandler{postWsdHome, getWsdTest}
 }
 
 var mwChainMap = func() func() map[string][]api.Middleware {
@@ -125,9 +131,10 @@ var mwChainMap = func() func() map[string][]api.Middleware {
 	}
 
 	mwChainMap := map[string][]api.Middleware{
-		"global":       globalMWChain,
-		"bb-jwt-chain": append(globalMWChain, JWTAuthMW(lib.EnvGet("BB_JWT_SECRET"))),
-		"bb-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGet("BB_API_KEY"))),
+		"global":        globalMWChain,
+		"bb-jwt-chain":  append(globalMWChain, JWTAuthMW(lib.EnvGet("BB_JWT_SECRET"))),
+		"bb-key-chain":  append(globalMWChain, KeyAuthMW(lib.EnvGet("BB_API_KEY"))),
+		"wsd-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGet("WSD_API_KEY"))),
 	}
 
 	return func() map[string][]api.Middleware {

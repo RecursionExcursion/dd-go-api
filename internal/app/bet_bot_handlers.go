@@ -149,6 +149,7 @@ var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 		api.Response.ServerError(w, "Failed to read body")
 		return
 	}
+	defer r.Body.Close()
 
 	pl, err := lib.Map[LoginPayload](bodyBytes)
 	if err != nil {
