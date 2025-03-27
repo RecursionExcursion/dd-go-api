@@ -3,6 +3,7 @@ package api
 import (
 	"compress/gzip"
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -19,6 +20,7 @@ type ApiResponses struct {
 	BadRequest      response
 	Send            customResponse
 	Gzip            func(w http.ResponseWriter, status int, data ...any)
+	StreamBytes     func(w http.ResponseWriter, status int, bytes []byte, name string)
 }
 
 var Response = ApiResponses{
@@ -64,6 +66,13 @@ var Response = ApiResponses{
 
 	Gzip: func(w http.ResponseWriter, status int, data ...any) {
 		zip(w, status, data...)
+	},
+
+	StreamBytes: func(w http.ResponseWriter, status int, bytes []byte, name string) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%v\"", name))
+		w.WriteHeader(status)
+		w.Write(bytes)
 	},
 }
 

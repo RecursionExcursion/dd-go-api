@@ -62,6 +62,7 @@ func routes() []api.RouteHandler {
 
 	var routes = []api.RouteHandler{getbaseRoute, testRoute}
 	routes = append(routes, betbotRoutes()...)
+	routes = append(routes, wsdRoutes()...)
 
 	return routes
 }
@@ -91,7 +92,7 @@ func betbotRoutes() []api.RouteHandler {
 	}
 
 	var loginBBUserRoute = api.RouteHandler{
-		MethodAndPath: "POST /user/login",
+		MethodAndPath: "POST /betbot/user/login",
 		Handler:       HandleUserLogin,
 		Middleware:    apiKeyChain,
 	}
@@ -99,25 +100,18 @@ func betbotRoutes() []api.RouteHandler {
 	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, loginBBUserRoute, bbRevalidateAndZip}
 }
 
-// func createMiddlewareChains() map[string][]api.Middleware {
-// 	geoParams := GeoLimitParams{
-// 		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
-// 	}
+func wsdRoutes() []api.RouteHandler {
 
-// 	globalMWChain := []api.Middleware{
-// 		LoggerMW,
-// 		GeoLimitMW(geoParams),
-// 		RateLimitMW,
-// 	}
+	mwchains := mwChainMap()
 
-// 	mwChainMap := map[string][]api.Middleware{
-// 		"global":       globalMWChain,
-// 		"bb-jwt-chain": append(globalMWChain, JWTAuthMW(lib.EnvGet("BB_JWT_SECRET"))),
-// 		"bb-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGet("BB_API_KEY"))),
-// 	}
+	var getWsdHome = api.RouteHandler{
+		MethodAndPath: "GET /wsd",
+		Handler:       getWsdHomeHandler,
+		Middleware:    mwchains["global"],
+	}
 
-// 	return mwChainMap
-// }
+	return []api.RouteHandler{getWsdHome}
+}
 
 var mwChainMap = func() func() map[string][]api.Middleware {
 	geoParams := GeoLimitParams{

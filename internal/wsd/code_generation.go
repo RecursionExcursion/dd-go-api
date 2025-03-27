@@ -1,4 +1,4 @@
-package app
+package wsd
 
 import (
 	"fmt"
@@ -14,7 +14,12 @@ func (s *script) addLine(l string) {
 	s.code += "\n" + l
 }
 
-func GenerateScript(path string, args ...string) error {
+/* GenerateScript - creates a go script that opens files/urls
+ * path- is wher the script is going to be created
+ * args- urls/paths to open
+ */
+
+func GenerateScript(f *os.File, args ...string) error {
 	//Create base script and imports
 	fileContent := script{
 		code: genPackageStatement(),
@@ -42,8 +47,7 @@ func GenerateScript(path string, args ...string) error {
 	//Add exefn at bottom of file
 	fileContent.addLine(execFnTemplate.code)
 
-	//write file
-	err := os.WriteFile(path, []byte(fileContent.code), os.ModePerm)
+	_, err := f.Write([]byte(fileContent.code))
 	if err != nil {
 		return err
 	}
