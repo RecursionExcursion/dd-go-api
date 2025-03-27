@@ -33,7 +33,7 @@ func GenerateScript(f *os.File, args ...string) error {
 
 	//add exefn calls with args
 	for _, a := range args {
-		execCall := exeFnCallTemplate
+		execCall := execFnCallTemplate
 		execCall.inject(fmt.Sprintf("\"%v\"", a))
 		mainFnScript.addLine(execCall.code)
 	}

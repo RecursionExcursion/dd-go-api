@@ -21,7 +21,7 @@ var mainFuncTemplate = codeTemplate{
 	delimmiter: "<args>",
 }
 
-var exeFnCallTemplate = codeTemplate{
+var execFnCallTemplate = codeTemplate{
 	code:       `execCommand(<args>)`,
 	delimmiter: `<args>`,
 }
