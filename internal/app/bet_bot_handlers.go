@@ -12,12 +12,12 @@ import (
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
-var HandleGetBetBot api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	lib.Log("Querying DB for betbot data", 5)
-
 	compressedData, err := BetBotRepository().dataRepo.findTById(dataId)
 	if err != nil {
+		log.Println(err)
 		api.Response.ServerError(w, "")
 		return
 	}
@@ -29,7 +29,9 @@ var HandleGetBetBot api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// log.Printf("%+v", decompressedDbData)
+	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705610))
+	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705611))
+	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705612))
 	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705613))
 
 	lib.Log("Compiling stats", 5)
@@ -53,19 +55,20 @@ var HandleGetBetBot api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 
 }
 
-var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	//collect data
+	lib.Log("Collecting Data", 5)
 	fsd, err := betbot.CollectData()
 	if err != nil {
 		api.Response.ServerError(w)
 		return
 	}
 
-	log.Println("In handlers")
 	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	//compress data
+	lib.Log("Compressing Data", 5)
 	compressedData, err := lib.GzipCompressor[betbot.FirstShotData]().Compress(fsd)
 	if err != nil {
 		api.Response.ServerError(w, "")
@@ -77,8 +80,18 @@ var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http
 		Data:    compressedData,
 	}
 
+	//Wipe old data
+	lib.Log("Wiping stale Data", 5)
+	ok, err := BetBotRepository().dataRepo.deleteTById(dataId)
+	if err != nil || !ok {
+		lib.Log(err.Error(), -1)
+		api.Response.ServerError(w, "could not save data")
+		return
+	}
+
 	//save data
-	ok, err := BetBotRepository().dataRepo.saveT(compressed)
+	lib.Log("Saving New Data", 5)
+	ok, err = BetBotRepository().dataRepo.saveT(compressed)
 	if err != nil {
 		lib.Log(err.Error(), -1)
 		api.Response.ServerError(w, "could not save data")
@@ -90,6 +103,38 @@ var HandleBetBotRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http
 	} else {
 		api.Response.ServerError(w, "Data could not be revalidated")
 	}
+}
+
+var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
+	//collect data
+	fsd, err := betbot.CollectData()
+	if err != nil {
+		api.Response.ServerError(w)
+		return
+	}
+
+	log.Println("In handlers")
+	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
+
+	// Compile stats
+	packagedData, err := betbot.NewStatCalculator(fsd).CalcAndPackage()
+	if err != nil {
+		lib.LogError("", err)
+		api.Response.ServerError(w)
+		return
+	}
+
+	// Zip and return
+	lib.Log("Gzipping payload", 5)
+	api.Response.Gzip(w, 200,
+		struct {
+			Meta string
+			Data []betbot.PackagedPlayer
+		}{
+			Meta: strconv.FormatInt(time.Now().UnixMilli(), 10),
+			Data: packagedData,
+		},
+	)
 }
 
 var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {

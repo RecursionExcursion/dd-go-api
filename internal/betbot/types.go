@@ -178,9 +178,9 @@ type play struct {
 }
 
 type Participant struct {
-	Athlete athlete `json:"athlete"`
+	Athlete pAthlete `json:"athlete"`
 }
 
-type Athelete struct {
+type pAthlete struct {
 	Id string `json:"id"`
 }

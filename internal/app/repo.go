@@ -14,9 +14,10 @@ import (
 )
 
 type repo[T any] struct {
-	findTById func(string) (T, error)
-	findFirst func() (T, error)
-	saveT     func(T) (bool, error)
+	findTById   func(string) (T, error)
+	findFirst   func() (T, error)
+	saveT       func(T) (bool, error)
+	deleteTById func(string) (bool, error)
 }
 
 func BetBotRepository() struct {
@@ -101,16 +102,29 @@ func BetBotRepository() struct {
 
 				return mongoQuery(dataConn, func(c *mongo.Collection) (betbot.CompressedFsData, error) {
 					res := c.FindOne(context.TODO(), query)
-					jsn, err := bsontoJson().SR(res)
+					// jsn, err := bsontoJson().SR(res)
+					// if err != nil {
+					// 	return betbot.CompressedFsData{}, err
+					// }
+					// var fsData betbot.CompressedFsData
+					// if err := json.Unmarshal(jsn, &fsData); err != nil {
+					// 	log.Println("Error mapping user")
+					// 	return betbot.CompressedFsData{}, err
+					// }
+
+					var data betbot.CompressedFsData
+					err := res.Decode(&data)
+					if err == mongo.ErrNoDocuments {
+						log.Println("No document found")
+						return betbot.CompressedFsData{}, nil // or return error, depending on your app
+					}
 					if err != nil {
+						log.Println("Error decoding from Mongo:", err)
 						return betbot.CompressedFsData{}, err
 					}
-					var fsData betbot.CompressedFsData
-					if err := json.Unmarshal(jsn, &fsData); err != nil {
-						log.Println("Error mapping user")
-						return betbot.CompressedFsData{}, err
-					}
-					return fsData, nil
+					return data, nil
+
+					// return fsData, nil
 				})
 
 			},
@@ -118,6 +132,19 @@ func BetBotRepository() struct {
 			saveT: func(d betbot.CompressedFsData) (bool, error) {
 				return mongoQuery(dataConn, func(c *mongo.Collection) (bool, error) {
 					_, err := c.InsertOne(context.TODO(), d)
+					if err != nil {
+						return false, err
+					}
+					return true, nil
+				})
+			},
+			deleteTById: func(id string) (bool, error) {
+				return mongoQuery(dataConn, func(c *mongo.Collection) (bool, error) {
+					query := bson.D{primitive.E{
+						Key:   "id",
+						Value: id,
+					}}
+					_, err := c.DeleteOne(context.Background(), query)
 					if err != nil {
 						return false, err
 					}

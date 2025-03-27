@@ -38,15 +38,10 @@ func collectSeasonGames(year int) ([]game, error) {
 		return nil, err
 	}
 
-	start := time.Now()
 	games, err := fetchSeasonGamesAsync(ranges.Start, ranges.End)
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("Elasped time:%v", time.Since(start))
-
-	log.Println(games[0])
-	log.Println(len(games))
 
 	return games, nil
 }
@@ -200,6 +195,7 @@ func fetchPlaysAsync(games *[]game) error {
 		}
 	}
 
+	//spawn goroutines
 	for _, g := range *games {
 
 		if g.Season.Slug == "preseason" || !g.PlayByPlay {

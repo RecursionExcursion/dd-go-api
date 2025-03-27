@@ -38,6 +38,7 @@ func routes() []api.RouteHandler {
 			log.Println("In handlers")
 			betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
+			// Compile stats
 			packagedData, err := betbot.NewStatCalculator(fsd).CalcAndPackage()
 			if err != nil {
 				lib.LogError("", err)
@@ -45,6 +46,7 @@ func routes() []api.RouteHandler {
 				return
 			}
 
+			// Zip and return
 			lib.Log("Gzipping payload", 5)
 			api.Response.Gzip(w, 200,
 				struct {
@@ -78,13 +80,19 @@ func betbotRoutes() []api.RouteHandler {
 
 	var getBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot",
-		Handler:       HandleGetBetBot,
+		Handler:       HandleBBGet,
 		Middleware:    bbMwChain,
 	}
 
 	var revalidateBetBotRoute = api.RouteHandler{
 		MethodAndPath: "GET /betbot/revalidate",
-		Handler:       HandleBetBotRevalidation,
+		Handler:       HandleGetBBRevalidation,
+		Middleware:    bbMwChain,
+	}
+
+	var bbRevalidateAndZip = api.RouteHandler{
+		MethodAndPath: "GET /betbot/zip",
+		Handler:       HandleBBValidateAndZip,
 		Middleware:    bbMwChain,
 	}
 
@@ -94,5 +102,5 @@ func betbotRoutes() []api.RouteHandler {
 		Middleware:    bbMwChain,
 	}
 
-	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, loginBBUserRoute}
+	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, loginBBUserRoute, bbRevalidateAndZip}
 }
