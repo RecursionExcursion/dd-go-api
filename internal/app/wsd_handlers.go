@@ -39,6 +39,7 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		panic(err)
 	}
+
 	api.Response.StreamBytes(w, 200, binBytes, name)
 }
 
@@ -61,5 +62,11 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 }
 
 var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	api.Response.Ok(w, []string{"win", "lin", "dar"})
+
+	keys := []string{}
+	for k := range wsd.SupportedArchitecture {
+		keys = append(keys, k)
+	}
+
+	api.Response.Ok(w, keys)
 }

@@ -10,6 +10,7 @@ import (
 )
 
 type CreateExeParams struct {
+	Name     string
 	Arch     string
 	Commands []string
 }
@@ -17,36 +18,65 @@ type CreateExeParams struct {
 // TODO update logs to use lib.Log()
 func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 
-	tempDir, err := CreateTempDir("", "go-app")
+	tempDir, f, err := createTempDirAndFile()
 	if err != nil {
+		os.RemoveAll(tempDir)
 		return nil, "", err
 	}
 	defer os.RemoveAll(tempDir)
-
-	f, err := CreateTempFile(tempDir, "foo")
-	if err != nil {
-		return nil, "", err
-	}
 
 	err = GenerateScript(f, params.Commands...)
 	if err != nil {
 		return nil, "", err
 	}
 
+	binPath, exeName, err := execCmdOnTempProject(tempDir, params)
+	if err != nil {
+		return nil, "", err
+	}
+
+	lib.Log(fmt.Sprintf("Build successful. Binary at:%v", binPath), 5)
+
+	inMemBin, err := os.ReadFile(binPath)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return inMemBin, exeName, nil
+}
+
+func createTempDirAndFile() (string, *os.File, error) {
+	tempDir, err := CreateTempDir("", "go-app")
+	if err != nil {
+		return "", nil, err
+	}
+
+	f, err := CreateTempFile(tempDir, "foo")
+	if err != nil {
+		return tempDir, nil, err
+	}
+	return tempDir, f, nil
+}
+
+func execCmdOnTempProject(tempDir string, params CreateExeParams) (string, string, error) {
 	// BUILD go.mod, must be done before the exe bin is created or it will fail
 	modInit := createExecCmd(tempDir, "go", "mod", "init", "tmp.com/tmp")
 	if out, err := modInit.CombinedOutput(); err != nil {
 		fmt.Println("go mod init failed:", string(out))
-		return nil, "", err
+		return "", "", err
 	}
 
-	arc := compilationPairs[params.Arch]
+	arc := SupportedArchitecture[params.Arch]
 
 	exeName := ""
-	if params.Arch == "win" {
-		exeName = "app.exe"
+	if params.Name != "" {
+		exeName = params.Name
 	} else {
 		exeName = "app"
+	}
+
+	if params.Arch == win64 {
+		exeName += ".exe"
 	}
 
 	binPath := filepath.Join(tempDir, exeName)
@@ -59,17 +89,9 @@ func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 	output, err := binCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Build failed:", string(output))
-		return nil, "", err
+		return "", "", err
 	}
-
-	lib.Log(fmt.Sprintf("Build successful. Binary at:%v", binPath), 5)
-
-	inMemBin, err := os.ReadFile(binPath)
-	if err != nil {
-		return nil, "", err
-	}
-
-	return inMemBin, exeName, nil
+	return binPath, exeName, nil
 }
 
 func createExecCmd(dir string, name string, args ...string) *exec.Cmd {

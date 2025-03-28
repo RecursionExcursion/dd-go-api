@@ -1,12 +1,18 @@
 package wsd
 
+/* Supported os and arch */
+
+const win64 = "win64"
+const linux64 = "linux64"
+const mac64 = "mac64"
+
 type compliationPair struct {
 	os   string
 	arch string
 }
 
-var compilationPairs = map[string]compliationPair{
-	"win": {os: "windows", arch: "amd64"},
-	"lin": {os: "linux", arch: "arm64"},
-	"dar": {os: "darwin", arch: "arm64"},
+var SupportedArchitecture = map[string]compliationPair{
+	win64:   {os: "windows", arch: "amd64"},
+	linux64: {os: "linux", arch: "arm64"},
+	mac64:   {os: "darwin", arch: "arm64"},
 }
