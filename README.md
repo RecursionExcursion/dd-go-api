@@ -72,16 +72,16 @@ docker run -p 8080:8080 --env-file .env dd-go-api
 
 ## 📦 Endpoints Overview
 
-/wsd/* – All routes related to the Workspace Deployer
+- /wsd/* – All routes related to the Workspace Deployer
 
-/betbot/* – All routes for BetBot stats and data access
+- /betbot/* – All routes for BetBot stats and data access
 
-For a full list of available routes, see the docs folder or inspect routes.go.
+- For a full list of available routes, see the docs folder or inspect routes.go.
 
 ## 🧠 Notes
 
-Logging verbosity is controlled via LOG_LEVEL.
+- Logging verbosity is controlled via LOG_LEVEL.
 
-APIs require domain-specific API keys for access (WSD_API_KEY and BB_API_KEY).
+- APIs require domain-specific API keys for access (WSD_API_KEY and BB_API_KEY).
 
-BetBot uses JWT for authentication – keep BB_JWT_SECRET secure.
+- BetBot uses JWT for authentication – keep BB_JWT_SECRET secure.
