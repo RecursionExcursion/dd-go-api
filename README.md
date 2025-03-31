@@ -2,7 +2,6 @@
 
 ![Go Version](https://img.shields.io/badge/go-1.20+-blue)
 ![Dockerized](https://img.shields.io/badge/docker-ready-blue)
-![License](https://img.shields.io/github/license/RecursionExcursion/dd-go-api)
 ![Issues](https://img.shields.io/github/issues/RecursionExcursion/dd-go-api)
 ![Last Commit](https://img.shields.io/github/last-commit/RecursionExcursion/dd-go-api)
 
