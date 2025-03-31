@@ -29,11 +29,6 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705610))
-	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705611))
-	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705612))
-	betbot.FindGameInFsd(decompressedDbData, strconv.Itoa(401705613))
-
 	lib.Log("Compiling stats", 5)
 	packagedData, err := betbot.NewStatCalculator(decompressedDbData).CalcAndPackage()
 	if err != nil {
@@ -45,11 +40,11 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	lib.Log("Gzipping payload", 5)
 	api.Response.Gzip(w, 200,
 		struct {
-			meta string
-			data []betbot.PackagedPlayer
+			Meta string
+			Data []betbot.PackagedPlayer
 		}{
-			meta: decompressedDbData.Created,
-			data: packagedData,
+			Meta: decompressedDbData.Created,
+			Data: packagedData,
 		},
 	)
 
