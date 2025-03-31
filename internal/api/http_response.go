@@ -77,6 +77,14 @@ var Response = ApiResponses{
 }
 
 func send(w http.ResponseWriter, status int, data any) {
+
+	switch v := data.(type) {
+	case []any:
+		if len(v) == 1 {
+			data = v[0]
+		}
+	}
+
 	w.WriteHeader(status)
 	encodeToJson(data, w)
 }

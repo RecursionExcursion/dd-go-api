@@ -20,6 +20,7 @@ func routes() []api.RouteHandler {
 		Handler: api.HandlerFn(func(w http.ResponseWriter, r *http.Request) {
 			api.Response.Ok(w, "API Status: Healthy")
 		}),
+		Middleware: mwChainMap()["global"],
 	}
 
 	/* Test */
@@ -131,7 +132,21 @@ func wsdRoutes() []api.RouteHandler {
 		Middleware: keyChain,
 	}
 
-	return []api.RouteHandler{postWsdHome, getWsdTest, getSupportedOs, wakeup}
+	routes := api.RouteHandler{
+		MethodAndPath: "GET /wsd/routes",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+
+			routeMap := map[string]string{
+				"getOs":     "/wsd/os",
+				"postBuild": "/wsd/build",
+			}
+
+			api.Response.Ok(w, routeMap)
+		},
+		Middleware: keyChain,
+	}
+
+	return []api.RouteHandler{postWsdHome, getWsdTest, getSupportedOs, wakeup, routes}
 }
 
 var mwChainMap = func() func() map[string][]api.Middleware {
