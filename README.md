@@ -1,5 +1,12 @@
 # dd-go-api
 
+![Go Version](https://img.shields.io/badge/go-1.20+-blue)
+![Dockerized](https://img.shields.io/badge/docker-ready-blue)
+![License](https://img.shields.io/github/license/RecursionExcursion/dd-go-api)
+![Issues](https://img.shields.io/github/issues/RecursionExcursion/dd-go-api)
+![Last Commit](https://img.shields.io/github/last-commit/RecursionExcursion/dd-go-api)
+
+
 An API written in Go for [Dune Digital](https://dunedigital.io), split into two main domains: **WSD (Workspace Deployer)** and **BetBot**.
 
 ---
@@ -50,13 +57,13 @@ BB_JWT_SECRET=<your_jwt_secret>
 
 ### 4. Run
 
-## Option A- Run Locally
+### Option A- Run Locally
 
 ```bash
 go run .
 ```
 
-## Option B- Run with Docker
+### Option B- Run with Docker
 
 
 ```bash
