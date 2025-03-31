@@ -1,5 +1,11 @@
 # dd-go-api
 
+![Go Version](https://img.shields.io/badge/go-1.20+-blue)
+![Dockerized](https://img.shields.io/badge/docker-ready-blue)
+![Issues](https://img.shields.io/github/issues/RecursionExcursion/dd-go-api)
+![Last Commit](https://img.shields.io/github/last-commit/RecursionExcursion/dd-go-api)
+
+
 An API written in Go for [Dune Digital](https://dunedigital.io), split into two main domains: **WSD (Workspace Deployer)** and **BetBot**.
 
 ---
@@ -50,13 +56,13 @@ BB_JWT_SECRET=<your_jwt_secret>
 
 ### 4. Run
 
-## Option A- Run Locally
+### Option A- Run Locally
 
 ```bash
 go run .
 ```
 
-## Option B- Run with Docker
+### Option B- Run with Docker
 
 
 ```bash
@@ -66,16 +72,16 @@ docker run -p 8080:8080 --env-file .env dd-go-api
 
 ## 📦 Endpoints Overview
 
-/wsd/* – All routes related to the Workspace Deployer
+- /wsd/* – All routes related to the Workspace Deployer
 
-/betbot/* – All routes for BetBot stats and data access
+- /betbot/* – All routes for BetBot stats and data access
 
-For a full list of available routes, see the docs folder or inspect routes.go.
+- For a full list of available routes, see the docs folder or inspect routes.go.
 
 ## 🧠 Notes
 
-Logging verbosity is controlled via LOG_LEVEL.
+- Logging verbosity is controlled via LOG_LEVEL.
 
-APIs require domain-specific API keys for access (WSD_API_KEY and BB_API_KEY).
+- APIs require domain-specific API keys for access (WSD_API_KEY and BB_API_KEY).
 
-BetBot uses JWT for authentication – keep BB_JWT_SECRET secure.
+- BetBot uses JWT for authentication – keep BB_JWT_SECRET secure.
