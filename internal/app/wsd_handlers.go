@@ -76,35 +76,37 @@ var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Re
 var isReady atomic.Bool
 
 var getPipelineWarmUpHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	go func() {
 
-	log.Println("Warming up Go build pipeline")
+		log.Println("Warming up Go build pipeline")
 
-	//TODO add darwin warmup too
-	winParams := wsd.CreateExeParams{
-		Arch:     "win",
-		Commands: []string{},
-	}
-	darwinParams := wsd.CreateExeParams{
-		Arch:     "win",
-		Commands: []string{},
-	}
+		//TODO add darwin warmup too
+		winParams := wsd.CreateExeParams{
+			Arch:     "win",
+			Commands: []string{},
+		}
+		darwinParams := wsd.CreateExeParams{
+			Arch:     "win",
+			Commands: []string{},
+		}
 
-	log.Println("Caching Win dist")
-	_, _, err := wsd.CreateGoExe(winParams)
-	if err != nil {
-		api.Response.ServerError(w)
-		return
-	}
+		log.Println("Caching Win dist")
+		_, _, err := wsd.CreateGoExe(winParams)
+		if err != nil {
+			api.Response.ServerError(w)
+			return
+		}
 
-	log.Println("Caching Win dist")
-	_, _, err = wsd.CreateGoExe(darwinParams)
-	if err != nil {
-		api.Response.ServerError(w)
-		return
-	}
+		log.Println("Caching Win dist")
+		_, _, err = wsd.CreateGoExe(darwinParams)
+		if err != nil {
+			api.Response.ServerError(w)
+			return
+		}
 
-	log.Println(`Pipeline warmup successful`)
-	isReady.Store(true)
+		log.Println(`Pipeline warmup successful`)
+		isReady.Store(true)
+	}()
 	api.Response.Ok(w)
 }
 
