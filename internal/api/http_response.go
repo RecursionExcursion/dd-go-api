@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
@@ -77,7 +78,6 @@ var Response = ApiResponses{
 }
 
 func send(w http.ResponseWriter, status int, data any) {
-
 	switch v := data.(type) {
 	case []any:
 		if len(v) == 1 {
@@ -85,15 +85,20 @@ func send(w http.ResponseWriter, status int, data any) {
 		}
 	}
 
-	w.WriteHeader(status)
-	encodeToJson(data, w)
+	encodeToJson(data, w, status)
 }
 
-func encodeToJson(data any, w http.ResponseWriter) {
-	err := json.NewEncoder(w).Encode(data)
+func encodeToJson(data any, w http.ResponseWriter, status int) {
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(data)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(buf.Bytes())
 }
 
 func zip(w http.ResponseWriter, status int, data ...any) {
