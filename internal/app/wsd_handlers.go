@@ -82,12 +82,16 @@ var getPipelineWarmUpHandler api.HandlerFn = func(w http.ResponseWriter, r *http
 
 		//TODO add darwin warmup too
 		winParams := wsd.CreateExeParams{
-			Arch:     "win",
-			Commands: []string{},
+			Arch: "win",
+			Commands: []string{
+				"url:www.facebook.com",
+			},
 		}
 		darwinParams := wsd.CreateExeParams{
-			Arch:     "win",
-			Commands: []string{},
+			Arch: "win",
+			Commands: []string{
+				"url:www.facebook.com",
+			},
 		}
 
 		log.Println("Caching Win dist")
