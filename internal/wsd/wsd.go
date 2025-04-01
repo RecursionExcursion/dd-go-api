@@ -2,6 +2,7 @@ package wsd
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +19,8 @@ type CreateExeParams struct {
 // TODO update logs to use lib.Log()
 func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 
+	log.Println(`Creating temp dir`)
+
 	tempDir, f, err := createTempDirAndFile()
 	if err != nil {
 		os.RemoveAll(tempDir)
@@ -25,11 +28,13 @@ func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 	}
 	defer os.RemoveAll(tempDir)
 
+	log.Println(`gen script`)
 	err = GenerateScript(f, params.Commands...)
 	if err != nil {
 		return nil, "", err
 	}
 
+	log.Println(`building binary`)
 	binPath, exeName, err := execCmdOnTempProject(tempDir, params)
 	if err != nil {
 		return nil, "", err
@@ -37,6 +42,7 @@ func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
 
 	lib.Log(fmt.Sprintf("Build successful. Binary at:%v", binPath), 5)
 
+	log.Println(`Reading bin`)
 	inMemBin, err := os.ReadFile(binPath)
 	if err != nil {
 		return nil, "", err

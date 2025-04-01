@@ -2,7 +2,9 @@ package app
 
 import (
 	"io"
+	"log"
 	"net/http"
+	"sync/atomic"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
@@ -69,4 +71,43 @@ var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Re
 	}
 
 	api.Response.Ok(w, keys)
+}
+
+var isReady atomic.Bool
+
+var getPipelineWarmUpHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("Warming up Go build pipeline")
+
+	//TODO add darwin warmup too
+	winParams := wsd.CreateExeParams{
+		Arch:     "win",
+		Commands: []string{},
+	}
+	darwinParams := wsd.CreateExeParams{
+		Arch:     "win",
+		Commands: []string{},
+	}
+
+	log.Println("Caching Win dist")
+	_, _, err := wsd.CreateGoExe(winParams)
+	if err != nil {
+		api.Response.ServerError(w)
+		return
+	}
+
+	log.Println("Caching Win dist")
+	_, _, err = wsd.CreateGoExe(darwinParams)
+	if err != nil {
+		api.Response.ServerError(w)
+		return
+	}
+
+	log.Println(`Pipeline warmup successful`)
+	isReady.Store(true)
+	api.Response.Ok(w)
+}
+
+var getStatusHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	api.Response.Ok(w, isReady.Load())
 }
