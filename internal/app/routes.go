@@ -124,18 +124,6 @@ func wsdRoutes() []api.RouteHandler {
 		Middleware:    keyChain,
 	}
 
-	warmup := api.RouteHandler{
-		MethodAndPath: "GET /wsd/warmup",
-		Handler:       getPipelineWarmUpHandler,
-		Middleware:    keyChain,
-	}
-
-	status := api.RouteHandler{
-		MethodAndPath: "GET /wsd/status",
-		Handler:       getStatusHandler,
-		Middleware:    keyChain,
-	}
-
 	routes := api.RouteHandler{
 		MethodAndPath: "GET /wsd/routes",
 		Handler: func(w http.ResponseWriter, r *http.Request) {
@@ -143,8 +131,6 @@ func wsdRoutes() []api.RouteHandler {
 			routeMap := map[string]string{
 				"getOs":     "/wsd/os",
 				"postBuild": "/wsd/build",
-				"getWarmUp": "/wsd/warmup",
-				"getStatus": "/wsd/status",
 			}
 
 			api.Response.Ok(w, routeMap)
@@ -152,7 +138,12 @@ func wsdRoutes() []api.RouteHandler {
 		Middleware: keyChain,
 	}
 
-	return []api.RouteHandler{postWsdHome, getWsdTest, getSupportedOs, warmup, routes, status}
+	return []api.RouteHandler{
+		postWsdHome,
+		getWsdTest,
+		getSupportedOs,
+		routes,
+	}
 }
 
 var mwChainMap = func() func() map[string][]api.Middleware {

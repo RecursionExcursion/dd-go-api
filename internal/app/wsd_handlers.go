@@ -4,7 +4,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"sync/atomic"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
@@ -25,6 +24,8 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		api.Response.ServerError(w, "Failed to map body")
 		return
 	}
+	log.Println(string(bodyBytes))
+	log.Println(params)
 
 	// Validate body
 	if params.Arch == "" {
@@ -71,51 +72,4 @@ var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Re
 	}
 
 	api.Response.Ok(w, keys)
-}
-
-var isReady atomic.Bool
-
-var getPipelineWarmUpHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	func() {
-
-		log.Println("Warming up Go build pipeline")
-
-		//TODO add darwin warmup too
-		winParams := wsd.CreateExeParams{
-			Name: "WIN_WARMUP",
-			Arch: "win",
-			Commands: []string{
-				"url:www.facebook.com",
-			},
-		}
-		darwinParams := wsd.CreateExeParams{
-			Name: "DARWIN-WARMUP",
-			Arch: "win",
-			Commands: []string{
-				"url:www.facebook.com",
-			},
-		}
-
-		log.Println("Caching Win dist")
-		_, _, err := wsd.CreateGoExe(winParams)
-		if err != nil {
-			log.Println("Win warmup failed:", err)
-			return
-		}
-
-		log.Println("Caching Win dist")
-		_, _, err = wsd.CreateGoExe(darwinParams)
-		if err != nil {
-			log.Println("Darwin warmup failed:", err)
-			return
-		}
-
-		log.Println(`Pipeline warmup successful`)
-		isReady.Store(true)
-	}()
-	api.Response.Ok(w)
-}
-
-var getStatusHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	api.Response.Ok(w, isReady.Load())
 }
