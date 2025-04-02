@@ -20,6 +20,6 @@ func beeGeesProtocol() {
 	for {
 		time.Sleep(10 * time.Minute)
 		http.Get(self)
-		log.Printf("BeeGees protocol complete! %v", time.Now().Format("2006-01-02T03:04:05Z"))
+		log.Printf("BeeGees protocol complete!")
 	}
 }
