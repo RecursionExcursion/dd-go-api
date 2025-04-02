@@ -17,38 +17,38 @@ type CreateExeParams struct {
 }
 
 // TODO update logs to use lib.Log()
-func CreateGoExe(params CreateExeParams) ([]byte, string, error) {
+func CreateGoExe(params CreateExeParams) (string, string, error) {
 
 	log.Println(`Creating temp dir`)
 
 	tempDir, f, err := createTempDirAndFile()
 	if err != nil {
 		os.RemoveAll(tempDir)
-		return nil, "", err
+		return "", "", err
 	}
-	defer os.RemoveAll(tempDir)
+	// defer os.RemoveAll(tempDir)
 
 	log.Println(`gen script`)
 	err = GenerateScript(f, params.Commands...)
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 
 	log.Println(`building binary`)
 	binPath, exeName, err := execCmdOnTempProject(tempDir, params)
 	if err != nil {
-		return nil, "", err
+		return "", "", err
 	}
 
 	lib.Log(fmt.Sprintf("Build successful. Binary at:%v", binPath), 5)
 
-	log.Println(`Reading bin`)
-	inMemBin, err := os.ReadFile(binPath)
-	if err != nil {
-		return nil, "", err
-	}
+	// log.Println(`Reading bin`)
+	// inMemBin, err := os.ReadFile(binPath)
+	// if err != nil {
+	// 	return nil, "", err
+	// }
 
-	return inMemBin, exeName, nil
+	return binPath, exeName, nil
 }
 
 func createTempDirAndFile() (string, *os.File, error) {
@@ -66,6 +66,7 @@ func createTempDirAndFile() (string, *os.File, error) {
 
 func execCmdOnTempProject(tempDir string, params CreateExeParams) (string, string, error) {
 	// BUILD go.mod, must be done before the exe bin is created or it will fail
+	log.Println(`Mod init`)
 	modInit := createExecCmd(tempDir, "go", "mod", "init", "tmp.com/tmp")
 	if out, err := modInit.CombinedOutput(); err != nil {
 		fmt.Println("go mod init failed:", string(out))
@@ -85,6 +86,8 @@ func execCmdOnTempProject(tempDir string, params CreateExeParams) (string, strin
 		exeName += ".exe"
 	}
 
+	log.Println(`bin init`)
+
 	binPath := filepath.Join(tempDir, exeName)
 	binCmd := createExecCmd(tempDir, "go", "build", "-o", binPath)
 	binCmd.Env = append(os.Environ(),
@@ -92,11 +95,16 @@ func execCmdOnTempProject(tempDir string, params CreateExeParams) (string, strin
 		fmt.Sprintf("GOARCH=%v", arc.arch),
 	)
 
+	log.Println("Starting go build...")
+
 	output, err := binCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println("Build failed:", string(output))
 		return "", "", err
 	}
+
+	log.Println("Go build finished.")
+
 	return binPath, exeName, nil
 }
 

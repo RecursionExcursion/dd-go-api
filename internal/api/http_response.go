@@ -5,7 +5,11 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 )
 
 type response = func(http.ResponseWriter, ...any)
@@ -22,6 +26,7 @@ type ApiResponses struct {
 	Send            customResponse
 	Gzip            func(w http.ResponseWriter, status int, data ...any)
 	StreamBytes     func(w http.ResponseWriter, status int, bytes []byte, name string)
+	StreamFile      func(w http.ResponseWriter, status int, binPath string, name string)
 }
 
 var Response = ApiResponses{
@@ -74,6 +79,30 @@ var Response = ApiResponses{
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%v\"", name))
 		w.WriteHeader(status)
 		w.Write(bytes)
+	},
+
+	StreamFile: func(w http.ResponseWriter, status int, binPath string, name string) {
+
+		fmt.Println(binPath, name)
+
+		f, _ := os.Open(binPath)
+		defer f.Close()
+
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%v\"", name))
+		w.WriteHeader(status)
+
+		size, err := io.Copy(w, f)
+		if err != nil {
+			log.Println("Streaming failed:", err)
+		}
+
+		log.Printf("Copied %v bytes", size)
+
+		err = os.RemoveAll(filepath.Dir(binPath))
+		if err != nil {
+			log.Println("Failed to clean up temp dir:", err)
+		}
 	},
 }
 

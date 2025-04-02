@@ -37,12 +37,12 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	binBytes, name, err := wsd.CreateGoExe(params)
+	binPath, name, err := wsd.CreateGoExe(params)
 	if err != nil {
 		panic(err)
 	}
 
-	api.Response.StreamBytes(w, 200, binBytes, name)
+	api.Response.StreamFile(w, 200, binPath, name)
 }
 
 var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
@@ -56,11 +56,11 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 		},
 	}
 
-	binBytes, name, err := wsd.CreateGoExe(testParams)
+	bin, name, err := wsd.CreateGoExe(testParams)
 	if err != nil {
 		panic(err)
 	}
-	api.Response.StreamBytes(w, 200, binBytes, name)
+	api.Response.StreamFile(w, 200, bin, name)
 }
 
 var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
@@ -76,18 +76,20 @@ var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Re
 var isReady atomic.Bool
 
 var getPipelineWarmUpHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	go func() {
+	func() {
 
 		log.Println("Warming up Go build pipeline")
 
 		//TODO add darwin warmup too
 		winParams := wsd.CreateExeParams{
+			Name: "WIN_WARMUP",
 			Arch: "win",
 			Commands: []string{
 				"url:www.facebook.com",
 			},
 		}
 		darwinParams := wsd.CreateExeParams{
+			Name: "DARWIN-WARMUP",
 			Arch: "win",
 			Commands: []string{
 				"url:www.facebook.com",
@@ -97,14 +99,14 @@ var getPipelineWarmUpHandler api.HandlerFn = func(w http.ResponseWriter, r *http
 		log.Println("Caching Win dist")
 		_, _, err := wsd.CreateGoExe(winParams)
 		if err != nil {
-			api.Response.ServerError(w)
+			log.Println("Win warmup failed:", err)
 			return
 		}
 
 		log.Println("Caching Win dist")
 		_, _, err = wsd.CreateGoExe(darwinParams)
 		if err != nil {
-			api.Response.ServerError(w)
+			log.Println("Darwin warmup failed:", err)
 			return
 		}
 
