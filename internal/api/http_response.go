@@ -83,8 +83,6 @@ var Response = ApiResponses{
 
 	StreamFile: func(w http.ResponseWriter, status int, binPath string, name string) {
 
-		fmt.Println(binPath, name)
-
 		f, _ := os.Open(binPath)
 		defer f.Close()
 
