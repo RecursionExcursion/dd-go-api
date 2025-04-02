@@ -2,11 +2,8 @@ package app
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -38,33 +35,6 @@ func mongoQuery[T any](mc mongoConnection, query queryFn[T]) (T, error) {
 	c := db.Collection(mc.Collection)
 	return query(c)
 
-}
-
-/* BsonToJson handles converting MongoDb results to json
- * SR- is for SingleResult responses
- */
-func bsontoJson() struct {
-	SR func(sr *mongo.SingleResult) ([]byte, error)
-} {
-	return struct {
-		SR func(sr *mongo.SingleResult) ([]byte, error)
-	}{
-		SR: func(sr *mongo.SingleResult) ([]byte, error) {
-			var res bson.M
-			err := sr.Decode(&res)
-			if err == mongo.ErrNoDocuments {
-				return nil, errors.New("no document was found with the key")
-			}
-			if err != nil {
-				return nil, err
-			}
-			jsonData, err := json.MarshalIndent(res, "", "    ")
-			if err != nil {
-				return nil, err
-			}
-			return jsonData, nil
-		},
-	}
 }
 
 func connectMongoClient() (*mongo.Client, error) {

@@ -52,6 +52,7 @@ BB_API_KEY=<your_bb_api_key>
 WSD_API_KEY=<your_wsd_api_key>
 LOG_LEVEL=<int>
 BB_JWT_SECRET=<your_jwt_secret>
+SELF_URL=<hosted_url>
 ```
 
 ### 4. Run
