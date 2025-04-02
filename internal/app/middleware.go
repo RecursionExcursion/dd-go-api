@@ -67,7 +67,6 @@ func RateLimitMW(next api.HandlerFn) api.HandlerFn {
 	// refil rate 5/sec, total bucket size is 10
 	var limiter = rate.NewLimiter(5, 10)
 	return func(w http.ResponseWriter, r *http.Request) {
-		log.Println("RL MW")
 		if !limiter.Allow() {
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return
