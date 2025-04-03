@@ -1,7 +1,6 @@
 package betbot
 
 import (
-	"log"
 	"net/http"
 	"sync"
 
@@ -94,7 +93,7 @@ func compileRosterAsync(teams *[]team) error {
 	//ranging a channel is a blocking operation until channel is empty
 	for res := range rChan {
 		if res.err != nil {
-			log.Println("error while fetching rosters")
+			lib.LogError("error while fetching rosters", res.err)
 			continue
 		}
 

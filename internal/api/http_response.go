@@ -112,10 +112,6 @@ func send(w http.ResponseWriter, status int, data any) {
 		}
 	}
 
-	encodeToJson(data, w, status)
-}
-
-func encodeToJson(data any, w http.ResponseWriter, status int) {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(data)
 	if err != nil {

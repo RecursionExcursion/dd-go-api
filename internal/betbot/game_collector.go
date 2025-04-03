@@ -225,7 +225,7 @@ func fetchPlaysAsync(games *[]game) error {
 				g.TrackedEvents.FirstScore = firstPointsPlay
 				firstShotPlay, err := extractFirstShotAttempt(gdDTO.gameData.Plays)
 				if err != nil {
-					log.Printf("%v for game:%v", err.Error(), gdDTO.gameId)
+					lib.LogError(fmt.Sprintf("%v for game:%v", err, gdDTO.gameId), err)
 				}
 				g.TrackedEvents.FirstShotAttempt = firstShotPlay
 

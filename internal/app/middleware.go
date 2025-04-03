@@ -53,7 +53,7 @@ func JWTAuthMW(key string) api.Middleware {
 				api.Response.Unauthorized(w, "Malformed token")
 				return
 			}
-			if isValid := validateJWT(parts[1], lib.EnvGet("BB_JWT_SECRET")); !isValid {
+			if isValid, _, _ := lib.ParseJWT(parts[1], lib.EnvGet("BB_JWT_SECRET")); !isValid {
 				api.Response.Unauthorized(w, "Invalid token")
 				return
 			}

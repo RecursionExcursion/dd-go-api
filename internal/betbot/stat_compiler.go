@@ -2,7 +2,6 @@ package betbot
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strconv"
 
@@ -41,16 +40,16 @@ func NewStatCalculator(fsd FirstShotData) *StatCalculator {
 	}
 }
 
-func (sc *StatCalculator) CalcAndPackage() ([]PackagedPlayer, error) {
+func (sc *StatCalculator) CalculateAndPackage() ([]PackagedPlayer, error) {
 
-	log.Printf("Calc stats for %v games", len(sc.fsd.Games))
+	lib.Log("Calc stats for %v games", len(sc.fsd.Games), 7)
 
-	err := sc.calcFirstScore()
+	err := sc.calculateFirstScore()
 	if err != nil {
 		return []PackagedPlayer{}, err
 	}
 
-	err = sc.calcFirstShotAttempt()
+	err = sc.calculateFirstShotAttempt()
 	if err != nil {
 		return []PackagedPlayer{}, err
 	}
@@ -74,14 +73,14 @@ func (sc *StatCalculator) CalcAndPackage() ([]PackagedPlayer, error) {
 	return filteredData, nil
 }
 
-func (sc *StatCalculator) calcFirstScore() error {
+func (sc *StatCalculator) calculateFirstScore() error {
 	for _, gm := range sc.fsd.Games {
 
 		fs := gm.TrackedEvents.FirstScore
 
 		if fs.Id == "" {
 			err := fmt.Errorf("first shot data for game:%v not found", gm.Id)
-			lib.LogError("", err)
+			lib.LogError("", err, "calculateFirstScore")
 			continue
 		}
 
@@ -97,7 +96,7 @@ func (sc *StatCalculator) calcFirstScore() error {
 	return nil
 }
 
-func (sc *StatCalculator) calcFirstShotAttempt() error {
+func (sc *StatCalculator) calculateFirstShotAttempt() error {
 	for _, gm := range sc.fsd.Games {
 
 		fsa := gm.TrackedEvents.FirstShotAttempt

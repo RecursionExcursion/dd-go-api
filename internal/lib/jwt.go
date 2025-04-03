@@ -1,4 +1,4 @@
-package app
+package lib
 
 import (
 	"time"
@@ -18,10 +18,10 @@ import (
 	jti		JWT ID — unique identifier for the token				 No
 */
 
-func createJWT(claims map[string]any, expHours uint, secret string) (string, error) {
+func CreateJWT(claims map[string]any, exp time.Duration, secret string) (string, error) {
 
 	jwtClaims := jwt.MapClaims{
-		"exp": time.Now().Add(time.Hour * time.Duration(expHours)).Unix(),
+		"exp": time.Now().Add(exp).Unix(),
 	}
 
 	for k, v := range claims {
@@ -35,26 +35,18 @@ func createJWT(claims map[string]any, expHours uint, secret string) (string, err
 	return token.SignedString([]byte(secret))
 }
 
-func validateJWT(token string, secret string) bool {
+func ParseJWT(token string, secret string) (bool, jwt.MapClaims, error) {
 	parsedToken, err := parseToken(token, secret)
 	if err != nil {
-		return false
+		return false, nil, err
 	}
 
-	return parsedToken.Valid
-}
-
-func extractClaims(token string, secret string) jwt.Claims {
-	parsedToken, err := parseToken(token, secret)
-	if err != nil {
-		return nil
-	}
 	claims, ok := parsedToken.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil
+		return parsedToken.Valid, claims, nil
 	}
 
-	return claims
+	return parsedToken.Valid, claims, nil
 }
 
 func parseToken(t string, secret string) (*jwt.Token, error) {

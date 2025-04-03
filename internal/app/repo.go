@@ -50,11 +50,11 @@ func BetBotRepository() struct {
 						var user betbot.User
 						err := res.Decode(&user)
 						if err == mongo.ErrNoDocuments {
-							log.Println("No document found")
+							lib.LogError("No document found", err, "mongoQuery")
 							return betbot.User{}, err
 						}
 						if err != nil {
-							log.Println("Error decoding from Mongo:", err)
+							lib.LogError("Error decoding from Mongo", err, "mongoQuery")
 							return betbot.User{}, err
 						}
 
@@ -78,11 +78,11 @@ func BetBotRepository() struct {
 						var user betbot.User
 						err := res.Decode(&user)
 						if err == mongo.ErrNoDocuments {
-							log.Println("No document found")
+							lib.LogError("No document found", err)
 							return betbot.User{}, err
 						}
 						if err != nil {
-							log.Println("Error decoding from Mongo:", err)
+							lib.LogError("Error decoding from Mongo", err)
 							return betbot.User{}, err
 						}
 

@@ -40,7 +40,7 @@ func routes() []api.RouteHandler {
 			betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 			// Compile stats
-			packagedData, err := betbot.NewStatCalculator(fsd).CalcAndPackage()
+			packagedData, err := betbot.NewStatCalculator(fsd).CalculateAndPackage()
 			if err != nil {
 				lib.LogError("", err)
 				api.Response.ServerError(w)

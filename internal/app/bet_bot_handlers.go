@@ -30,7 +30,7 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lib.Log("Compiling stats", 5)
-	packagedData, err := betbot.NewStatCalculator(decompressedDbData).CalcAndPackage()
+	packagedData, err := betbot.NewStatCalculator(decompressedDbData).CalculateAndPackage()
 	if err != nil {
 		lib.LogError("", err)
 		api.Response.ServerError(w)
@@ -112,7 +112,7 @@ var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	// Compile stats
-	packagedData, err := betbot.NewStatCalculator(fsd).CalcAndPackage()
+	packagedData, err := betbot.NewStatCalculator(fsd).CalculateAndPackage()
 	if err != nil {
 		lib.LogError("", err)
 		api.Response.ServerError(w)
@@ -169,10 +169,11 @@ var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	jwtClaims := make(map[string]any)
-	jwtClaims["sub"] = usr.Username
+	claims := map[string]any{
+		"sub": usr.Username,
+	}
 
-	jwt, err := createJWT(jwtClaims, 48, lib.EnvGet("BB_JWT_SECRET"))
+	jwt, err := lib.CreateJWT(claims, time.Hour*48, lib.EnvGet("BB_JWT_SECRET"))
 	if err != nil {
 		api.Response.ServerError(w)
 		return

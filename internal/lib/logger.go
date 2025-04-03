@@ -11,11 +11,10 @@ import (
 * If log level is < 0, it will always be logged
  */
 
-func Log(msg string, lvl int) {
-	if lvl >= getLogLevel() || lvl < 0 {
+func Log(msg string, lvl ...int) {
+	if len(lvl) == 0 || lvl[0] >= getLogLevel() || lvl[0] < 0 {
 		log.Println(msg)
 	}
-
 }
 
 func LogError(msg string, err error, stacks ...string) {
@@ -26,7 +25,6 @@ func LogError(msg string, err error, stacks ...string) {
 		if len(stacks) == 1 {
 			stackStr = stacks[0]
 		} else {
-			// for i, s := range stacks {
 			for i := len(stacks) - 1; i >= 0; i-- {
 				s := stacks[i]
 
