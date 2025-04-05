@@ -9,6 +9,7 @@ import (
 )
 
 type PackagedPlayer struct {
+	Id                  string `json:"id"`
 	Name                string `json:"name"`
 	Team                string `json:"team"`
 	FirstToScore        uint8  `json:"firstToScore"`
@@ -130,6 +131,7 @@ func (sc *StatCalculator) packageData() []PackagedPlayer {
 		for _, p := range t.Roster {
 
 			pp := PackagedPlayer{
+				Id:                  p.Id,
 				Name:                p.FullName,
 				Team:                t.Name,
 				FirstToScore:        p.BetStats.FirstPointsMade,
