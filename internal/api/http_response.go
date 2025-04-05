@@ -125,6 +125,13 @@ func send(w http.ResponseWriter, status int, data any) {
 }
 
 func zip(w http.ResponseWriter, status int, data ...any) {
+	var payload any
+	if len(data) == 1 {
+		payload = data[0]
+	} else {
+		payload = data
+	}
+
 	// Set headers
 	w.Header().Set("Content-Encoding", "gzip")
 	w.Header().Set("Content-Type", "text/plain")
@@ -134,7 +141,7 @@ func zip(w http.ResponseWriter, status int, data ...any) {
 
 	//json -> gz -> res
 	w.WriteHeader(status)
-	err := json.NewEncoder(gz).Encode(data)
+	err := json.NewEncoder(gz).Encode(payload)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return

@@ -9,11 +9,11 @@ import (
 )
 
 type PackagedPlayer struct {
-	Name                string
-	Team                string
-	FirstToScore        uint8
-	FirstShotAttempts   uint8
-	ScoreOnFirstAttempt uint8
+	Name                string `json:"name"`
+	Team                string `json:"team"`
+	FirstToScore        uint8  `json:"firstToScore"`
+	FirstShotAttempts   uint8  `json:"firstShotAttempts"`
+	ScoreOnFirstAttempt uint8  `json:"scoreOnFirstAttempt"`
 }
 
 type StatCalculator struct {
