@@ -1,7 +1,6 @@
 package app
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -36,7 +35,6 @@ func routes() []api.RouteHandler {
 				return
 			}
 
-			log.Println("In handlers")
 			betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 			// Compile stats

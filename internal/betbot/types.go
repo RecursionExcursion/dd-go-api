@@ -66,13 +66,16 @@ type gameDataFetchPayload struct {
 /* Team & Player  */
 
 type team struct {
-	Id             string   `json:"id"`
-	Uid            string   `json:"uid"`
-	Name           string   `json:"name"`
-	Slug           string   `json:"slug"`
-	Color          string   `json:"color"`
-	AlternateColor string   `json:"alternateColor"`
-	Roster         []player `json:"roster"`
+	Id             string `json:"id"`
+	Uid            string `json:"uid"`
+	Name           string `json:"name"`
+	Slug           string `json:"slug"`
+	Color          string `json:"color"`
+	AlternateColor string `json:"alternateColor"`
+	Logos          []struct {
+		Href string `json:"href"`
+	} `json:"logos"`
+	Roster []player `json:"roster"`
 }
 
 type player struct {
@@ -87,6 +90,9 @@ type player struct {
 	Slug        string       `json:"slug"`
 	Status      playerStatus `json:"status"`
 	BetStats    betStats     `json:"betStats"`
+	Headshot    struct {
+		Href string `json:"href"`
+	} `json:"headshot"`
 }
 
 type playerStatus struct {

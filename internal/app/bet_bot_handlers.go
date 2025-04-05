@@ -41,7 +41,6 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	timeSinceEpoch, err := time.Parse(betbot.BB_Meta_TimeFormat, decompressedDbData.Created)
 	if err != nil {
-		log.Println(decompressedDbData.Created)
 		log.Println(err)
 		timeSinceEpoch = time.Now()
 	}
@@ -67,8 +66,6 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 		api.Response.ServerError(w)
 		return
 	}
-
-	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	//compress data
 	lib.Log("Compressing Data", 5)
@@ -116,7 +113,6 @@ var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("In handlers")
 	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	// Compile stats

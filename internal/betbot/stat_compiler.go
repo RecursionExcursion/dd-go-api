@@ -14,6 +14,8 @@ type PackagedPlayer struct {
 	FirstToScore        uint8  `json:"firstToScore"`
 	FirstShotAttempts   uint8  `json:"firstShotAttempts"`
 	ScoreOnFirstAttempt uint8  `json:"scoreOnFirstAttempt"`
+	HeadShotHref        string `json:"headShotHref"`
+	TeamLogoHref        string `json:"teamLogoHref"`
 }
 
 type StatCalculator struct {
@@ -133,6 +135,8 @@ func (sc *StatCalculator) packageData() []PackagedPlayer {
 				FirstToScore:        p.BetStats.FirstPointsMade,
 				FirstShotAttempts:   p.BetStats.FirstShotAttempts,
 				ScoreOnFirstAttempt: p.BetStats.ScoreOnFirstAttempt,
+				HeadShotHref:        p.Headshot.Href,
+				TeamLogoHref:        t.Logos[0].Href,
 			}
 
 			packagedPlayers = append(packagedPlayers, pp)

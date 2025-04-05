@@ -2,7 +2,6 @@ package betbot
 
 import (
 	"errors"
-	"log"
 	"time"
 )
 
@@ -29,7 +28,6 @@ func CollectData() (FirstShotData, error) {
 func FindGameInFsd(fsd FirstShotData, id string) (game, error) {
 	for _, g := range fsd.Games {
 		if g.Id == id {
-			log.Printf("%+v", g)
 			return g, nil
 		}
 	}
@@ -40,7 +38,6 @@ func FindGameInFsd(fsd FirstShotData, id string) (game, error) {
 func FindGame(games []game, id string) (game, error) {
 	for _, g := range games {
 		if g.Id == id {
-			log.Printf("%+v", g)
 			return g, nil
 		}
 	}

@@ -2,7 +2,6 @@ package app
 
 import (
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
@@ -24,8 +23,6 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		api.Response.ServerError(w, "Failed to map body")
 		return
 	}
-	log.Println(string(bodyBytes))
-	log.Println(params)
 
 	// Validate body
 	if params.Arch == "" {
