@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -68,35 +69,51 @@ func routes() []api.RouteHandler {
 
 func betbotRoutes() []api.RouteHandler {
 
+	bbBase := pathGenerator("/betbot")
+
 	chains := mwChainMap()
 	jwtChain := chains["bb-jwt-chain"]
 	apiKeyChain := chains["bb-key-chain"]
 
 	var getBetBotRoute = api.RouteHandler{
-		MethodAndPath: "GET /betbot",
+		MethodAndPath: bbBase().GET,
 		Handler:       HandleBBGet,
 		Middleware:    jwtChain,
 	}
 
 	var revalidateBetBotRoute = api.RouteHandler{
-		MethodAndPath: "GET /betbot/revalidate",
+		MethodAndPath: bbBase().POST,
 		Handler:       HandleGetBBRevalidation,
 		Middleware:    jwtChain,
 	}
 
 	var bbRevalidateAndZip = api.RouteHandler{
-		MethodAndPath: "GET /betbot/zip",
+		MethodAndPath: bbBase("zip").GET,
 		Handler:       HandleBBValidateAndZip,
 		Middleware:    jwtChain,
 	}
 
 	var loginBBUserRoute = api.RouteHandler{
-		MethodAndPath: "POST /betbot/user/login",
+		MethodAndPath: bbBase("user", "login").POST,
 		Handler:       HandleUserLogin,
 		Middleware:    apiKeyChain,
 	}
 
-	return []api.RouteHandler{getBetBotRoute, revalidateBetBotRoute, loginBBUserRoute, bbRevalidateAndZip}
+	var bbPing = api.RouteHandler{
+		MethodAndPath: bbBase("ping").GET,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			api.Response.Ok(w)
+		},
+		Middleware: apiKeyChain,
+	}
+
+	return []api.RouteHandler{
+		getBetBotRoute,
+		revalidateBetBotRoute,
+		loginBBUserRoute,
+		bbRevalidateAndZip,
+		bbPing,
+	}
 }
 
 func wsdRoutes() []api.RouteHandler {
@@ -166,3 +183,44 @@ var mwChainMap = func() func() map[string][]api.Middleware {
 		return mwChainMap
 	}
 }()
+
+type HTTPMethods struct {
+	GET    string
+	POST   string
+	PUT    string
+	PATCH  string
+	DELETE string
+}
+
+func pathGenerator(base string) func(path ...string) HTTPMethods {
+	return func(paths ...string) HTTPMethods {
+
+		pathStr := ""
+
+		numArgs := len(paths)
+
+		if numArgs != 0 {
+			if numArgs == 1 {
+				pathStr = "/" + paths[0]
+			} else {
+				for _, arg := range paths {
+					pathStr += "/" + arg
+				}
+			}
+		}
+
+		route := base + pathStr
+
+		assign := func(s string) string {
+			return fmt.Sprintf("%v %v", s, route)
+		}
+
+		return HTTPMethods{
+			GET:    assign("GET"),
+			POST:   assign("POST"),
+			PUT:    assign("PUT"),
+			PATCH:  assign("PATCH"),
+			DELETE: assign("DELETE"),
+		}
+	}
+}
