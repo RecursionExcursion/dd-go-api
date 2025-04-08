@@ -223,8 +223,6 @@ func pathGenerator(base string) func(path ...string) HTTPMethods {
 			DELETE: assign("DELETE"),
 		}
 
-		fmt.Println(routes)
-
 		return routes
 	}
 }
