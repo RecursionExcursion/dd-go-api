@@ -39,18 +39,12 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	lib.Log("Gzipping payload", 5)
 
-	timeSinceEpoch, err := time.Parse(betbot.BB_Meta_TimeFormat, decompressedDbData.Created)
-	if err != nil {
-		log.Println(err)
-		timeSinceEpoch = time.Now()
-	}
-
 	api.Response.Gzip(w, 200,
 		struct {
 			Meta int64
 			Data []betbot.PackagedPlayer
 		}{
-			Meta: timeSinceEpoch.UnixMilli(),
+			Meta: decompressedDbData.Created,
 			Data: packagedData,
 		},
 	)
@@ -76,7 +70,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 	}
 	compressed := betbot.CompressedFsData{
 		Id:      dataId,
-		Created: time.Now().Format(betbot.BB_Meta_TimeFormat),
+		Created: fsd.Created,
 		Data:    compressedData,
 	}
 

@@ -17,7 +17,7 @@ func CollectData() (FirstShotData, error) {
 	}
 
 	data := FirstShotData{
-		Created: time.Now().Format("01-02-2006T15:04:05"),
+		Created: time.Now().UnixMilli(),
 		Teams:   teams,
 		Games:   games,
 	}

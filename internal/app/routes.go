@@ -215,12 +215,16 @@ func pathGenerator(base string) func(path ...string) HTTPMethods {
 			return fmt.Sprintf("%v %v", s, route)
 		}
 
-		return HTTPMethods{
+		routes := HTTPMethods{
 			GET:    assign("GET"),
 			POST:   assign("POST"),
 			PUT:    assign("PUT"),
 			PATCH:  assign("PATCH"),
 			DELETE: assign("DELETE"),
 		}
+
+		fmt.Println(routes)
+
+		return routes
 	}
 }

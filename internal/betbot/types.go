@@ -4,12 +4,12 @@ package betbot
 
 type CompressedFsData struct {
 	Id      string `json:"id"`
-	Created string `json:"created"`
+	Created int64  `json:"created"`
 	Data    string `json:"data"`
 }
 
 type FirstShotData struct {
-	Created string `json:"created"`
+	Created int64  `json:"created"`
 	Teams   []team `json:"teams"`
 	Games   []game `json:"games"`
 }
