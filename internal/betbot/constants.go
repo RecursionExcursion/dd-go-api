@@ -1,3 +1,7 @@
 package betbot
 
-const BB_Meta_TimeFormat = "01-02-2006T15:04:05"
+import "github.com/recursionexcursion/dd-go-api/internal/lib"
+
+const batchSize = 100
+
+var BatchRunner = lib.RunBatchSizeClosure(batchSize)

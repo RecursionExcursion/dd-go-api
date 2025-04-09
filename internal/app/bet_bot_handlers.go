@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
@@ -13,6 +14,8 @@ import (
 )
 
 var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+
+	timer := lib.StartTimer()
 
 	lib.Log("Querying DB for betbot data", 5)
 	compressedData, err := BetBotRepository().dataRepo.findTById(dataId)
@@ -49,56 +52,77 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 		},
 	)
 
+	timer.End()
+}
+
+/* Atomic bool for tracking whether or not the validation process is on going */
+var isWorking atomic.Bool
+
+var handleRevalidationPolling api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	api.Response.Ok(w, isWorking.Load())
 }
 
 var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-
-	//collect data
-	lib.Log("Collecting Data", 5)
-	fsd, err := betbot.CollectData()
-	if err != nil {
-		api.Response.ServerError(w)
+	if isWorking.Load() {
+		api.Response.Ok(w, "Revalidation in progress")
 		return
 	}
 
-	//compress data
-	lib.Log("Compressing Data", 5)
-	compressedData, err := lib.GzipCompressor[betbot.FirstShotData]().Compress(fsd)
-	if err != nil {
-		api.Response.ServerError(w, "")
-		return
-	}
-	compressed := betbot.CompressedFsData{
-		Id:      dataId,
-		Created: fsd.Created,
-		Data:    compressedData,
-	}
+	isWorking.Store(true)
 
-	//Wipe old data
-	lib.Log("Wiping stale Data", 5)
-	ok, err := BetBotRepository().dataRepo.deleteTById(dataId)
-	if err != nil || !ok {
-		lib.Log(err.Error(), -1)
-		api.Response.ServerError(w, "could not save data")
-		return
-	}
+	/* Long running task, done in the bg, tacked by the isWorking atomic Bool */
+	go func() {
+		timer := lib.StartTimer()
+		defer func() {
+			isWorking.Store(false)
+			timer.End()
+		}()
 
-	//save data
-	lib.Log("Saving New Data", 5)
-	ok, err = BetBotRepository().dataRepo.saveT(compressed)
-	if err != nil {
-		lib.Log(err.Error(), -1)
-		api.Response.ServerError(w, "could not save data")
-		return
-	}
+		//collect data
+		lib.Log("Collecting Data", 5)
+		fsd, err := betbot.CollectData()
+		if err != nil {
+			log.Printf("Error while collecting data: %v", err)
+			return
+		}
 
-	if ok {
-		api.Response.Ok(w, "Data revalidated successfully")
-	} else {
-		api.Response.ServerError(w, "Data could not be revalidated")
-	}
+		//compress data
+		lib.Log("Compressing Data", 5)
+		compressedData, err := lib.GzipCompressor[betbot.FirstShotData]().Compress(fsd)
+		if err != nil {
+			log.Printf("Error while compressing data: %v", err)
+			return
+		}
+		compressed := betbot.CompressedFsData{
+			Id:      dataId,
+			Created: fsd.Created,
+			Data:    compressedData,
+		}
+
+		//Wipe old data
+		lib.Log("Wiping stale Data", 5)
+		ok, err := BetBotRepository().dataRepo.deleteTById(dataId)
+		if err != nil || !ok {
+			log.Println("Error while wiping data")
+			lib.Log(err.Error(), -1)
+			return
+		}
+
+		//save data
+		lib.Log("Saving New Data", 5)
+		_, err = BetBotRepository().dataRepo.saveT(compressed)
+		if err != nil {
+			log.Println("Error while saving data")
+			lib.Log(err.Error(), -1)
+			return
+		}
+
+	}()
+
+	api.Response.Ok(w, "Revalidation started")
 }
 
+/* Collect, Compute, Send (No state is saved) */
 var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	//collect data
 	fsd, err := betbot.CollectData()
@@ -128,6 +152,7 @@ var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 			Data: packagedData,
 		},
 	)
+
 }
 
 var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {

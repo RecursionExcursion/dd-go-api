@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
@@ -101,7 +100,6 @@ func fetchSeasonInfo(year int) (tr TimeRange, err error) {
 func fetchSeasonGamesAsync(start time.Time, end time.Time) ([]game, error) {
 
 	var curr = start
-
 	eps := []string{}
 
 	for end.After(curr) {
@@ -112,40 +110,41 @@ func fetchSeasonGamesAsync(start time.Time, end time.Time) ([]game, error) {
 	}
 
 	gChan := make(chan []game, len(eps))
-	wg := sync.WaitGroup{}
-
-	gameWorker := func(ep string) {
-		defer wg.Done()
-
-		gamesPlayload, _, err := lib.FetchAndMap[seasonGamesFetchPayload](
-			func() (*http.Response, error) {
-				return http.Get(ep)
-			})
-
-		if err != nil {
-			gChan <- []game{}
-		}
-
-		games := []game{}
-		for _, wrapper := range gamesPlayload.Events {
-			g := wrapper.game
-			//Extract playByPlay bool from nested obj
-			if len(wrapper.Competitions) > 0 {
-				g.PlayByPlay = wrapper.Competitions[0].PlayByPlayAvailable
-			}
-			games = append(games, g)
-		}
-
-		gChan <- games
-	}
-
+	tasks := []func(){}
 	for _, ep := range eps {
-		wg.Add(1)
-		go gameWorker(ep)
+
+		ep := ep
+
+		tasks = append(tasks, func() {
+			gamesPlayload, _, err := lib.FetchAndMap[seasonGamesFetchPayload](
+				func() (*http.Response, error) {
+					return http.Get(ep)
+				})
+
+			if err != nil {
+				log.Printf("ERROR: failed to fetch %s: %v", ep, err)
+				gChan <- []game{}
+				return
+			}
+
+			games := []game{}
+			for _, wrapper := range gamesPlayload.Events {
+				g := wrapper.game
+				//Extract playByPlay bool from nested obj
+				if len(wrapper.Competitions) > 0 {
+					g.PlayByPlay = wrapper.Competitions[0].PlayByPlayAvailable
+				}
+				games = append(games, g)
+			}
+
+			gChan <- games
+		})
+
 	}
 
 	go func() {
-		wg.Wait()
+		// lib.RunBatch(tasks, batchSize)
+		BatchRunner(tasks)
 		close(gChan)
 	}()
 
@@ -170,45 +169,42 @@ func fetchPlaysAsync(games *[]game) error {
 	}
 
 	gdChan := make(chan GameDataChannelDTO)
-	wg := sync.WaitGroup{}
+	tasks := []func(){}
 
-	gameDataWorker := func(gameId string) {
-		defer wg.Done()
-
-		gEp := endpoints().GameData(gameId)
-
-		gData, _, err := lib.FetchAndMap[gameDataFetchPayload](func() (*http.Response, error) {
-			return http.Get(gEp)
-		})
-		if err != nil {
-			log.Println(err)
-
-			gdChan <- GameDataChannelDTO{
-				gameId:   gameId,
-				gameData: gameDataFetchPayload{},
-			}
-			return
-		}
-		gdChan <- GameDataChannelDTO{
-			gameId:   gameId,
-			gameData: gData,
-		}
-	}
-
-	//spawn goroutines
 	for _, g := range *games {
 
 		if g.Season.Slug == "preseason" || !g.PlayByPlay {
 			continue
 		}
 
-		gId := g.Id
-		wg.Add(1)
-		go gameDataWorker(gId)
+		gameId := g.Id
+
+		tasks = append(tasks, func() {
+
+			gEp := endpoints().GameData(gameId)
+
+			gData, _, err := lib.FetchAndMap[gameDataFetchPayload](func() (*http.Response, error) {
+				return http.Get(gEp)
+			})
+			if err != nil {
+				log.Println(err)
+
+				gdChan <- GameDataChannelDTO{
+					gameId:   gameId,
+					gameData: gameDataFetchPayload{},
+				}
+				return
+			}
+			gdChan <- GameDataChannelDTO{
+				gameId:   gameId,
+				gameData: gData,
+			}
+		})
 	}
 
 	go func() {
-		wg.Wait()
+		// lib.RunBatch(tasks, batchSize)
+		BatchRunner(tasks)
 		close(gdChan)
 	}()
 

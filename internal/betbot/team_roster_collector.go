@@ -47,46 +47,41 @@ func compileRosterAsync(teams *[]team) error {
 	}
 
 	rChan := make(chan RosterChannel, len(*teams))
-	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
-
-	//TODO consider making inline
-	rosterWorker := func(reschan chan RosterChannel,
-		teamId string,
-	) {
-		defer wg.Done()
-
-		rosterEp := endpoints().Roster(teamId)
-
-		rosterPayload, _, err := lib.FetchAndMap[rosterFetchPayload](
-			func() (*http.Response, error) {
-				return http.Get(rosterEp)
-			})
-		if err != nil {
-			reschan <- RosterChannel{
-				teamId: teamId,
-				roster: []player{},
-				err:    err,
-			}
-			return
-		}
-
-		reschan <- RosterChannel{
-			teamId: teamId,
-			roster: rosterPayload.Athletes,
-			err:    nil,
-		}
-
-	}
+	tasks := []func(){}
 
 	for i := range *teams {
 		t := &(*teams)[i]
-		wg.Add(1)
-		go rosterWorker(rChan, t.Id)
+		teamId := t.Id
+
+		tasks = append(tasks, func() {
+
+			rosterEp := endpoints().Roster(teamId)
+
+			rosterPayload, _, err := lib.FetchAndMap[rosterFetchPayload](
+				func() (*http.Response, error) {
+					return http.Get(rosterEp)
+				})
+			if err != nil {
+				rChan <- RosterChannel{
+					teamId: teamId,
+					roster: []player{},
+					err:    err,
+				}
+				return
+			}
+
+			rChan <- RosterChannel{
+				teamId: teamId,
+				roster: rosterPayload.Athletes,
+				err:    nil,
+			}
+		})
 	}
 
 	go func() {
-		wg.Wait()
+		// lib.RunBatch(tasks, batchSize)
+		BatchRunner(tasks)
 		close(rChan)
 	}()
 

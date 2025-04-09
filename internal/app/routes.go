@@ -86,6 +86,11 @@ func betbotRoutes() []api.RouteHandler {
 		Handler:       HandleGetBBRevalidation,
 		Middleware:    jwtChain,
 	}
+	var pollBetBotRoute = api.RouteHandler{
+		MethodAndPath: bbBase("poll").GET,
+		Handler:       handleRevalidationPolling,
+		Middleware:    jwtChain,
+	}
 
 	var bbRevalidateAndZip = api.RouteHandler{
 		MethodAndPath: bbBase("zip").GET,
@@ -113,6 +118,7 @@ func betbotRoutes() []api.RouteHandler {
 		loginBBUserRoute,
 		bbRevalidateAndZip,
 		bbPing,
+		pollBetBotRoute,
 	}
 }
 
