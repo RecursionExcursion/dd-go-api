@@ -155,6 +155,7 @@ var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// TODO impl pw hashing
 var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	type LoginPayload struct {
