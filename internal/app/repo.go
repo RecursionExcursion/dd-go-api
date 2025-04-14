@@ -23,7 +23,7 @@ func BetBotRepository() struct {
 	userRepo repo[betbot.User]
 	dataRepo repo[betbot.CompressedFsData]
 } {
-	dbName := lib.EnvGet("DB_NAME_BB")
+	dbName := lib.EnvGetOrPanic("DB_NAME_BB")
 
 	userConn := mongoConnection{
 		Db:         dbName,

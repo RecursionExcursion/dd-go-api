@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var atlasUri = lib.EnvGet("ATLAS_URI")
+var atlasUri = lib.EnvGetOrPanic("ATLAS_URI")
 
 type queryFn[T any] func(c *mongo.Collection) (T, error)
 

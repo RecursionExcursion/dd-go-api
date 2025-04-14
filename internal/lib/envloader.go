@@ -9,10 +9,10 @@ import (
 
 var envLoaded bool = false
 
-/* EnvGet loads EnvVars if not already loaded,
+/* EnvGetOrPanic loads EnvVars if not already loaded,
  * then retrieves the var or panics if not set
  */
-func EnvGet(key string) string {
+func EnvGetOrPanic(key string) string {
 	if !envLoaded {
 		if err := EnvLoader(); err != nil {
 			panic(err)
@@ -24,6 +24,29 @@ func EnvGet(key string) string {
 		log.Panicf("Env key %v not set", key)
 	}
 	return val
+}
+
+func EnvGetOrFallback(key string, fallback string) string {
+	if !envLoaded {
+		if err := EnvLoader(); err != nil {
+			return fallback
+		}
+	}
+
+	val := os.Getenv(key)
+	if val == "" {
+		return fallback
+	}
+	return val
+}
+
+func EnvGetOrDefault(key string) string {
+	if !envLoaded {
+		if err := EnvLoader(); err != nil {
+			return ""
+		}
+	}
+	return os.Getenv(key)
 }
 
 /* EnvLoader loads files into env

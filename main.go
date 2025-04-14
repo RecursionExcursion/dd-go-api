@@ -5,17 +5,18 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/recursionexcursion/dd-go-api/internal/app"
+	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
 func main() {
-	go beeGeesProtocol()
-	app.App()
+	// go beeGeesProtocol()
+	// app.App()
+	cfbr.CFBR()
 }
 
 func beeGeesProtocol() {
-	self := lib.EnvGet("SELF_URL")
+	self := lib.EnvGetOrPanic("SELF_URL")
 
 	for {
 		<-time.After(time.Minute * 12)

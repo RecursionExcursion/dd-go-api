@@ -180,9 +180,9 @@ var mwChainMap = func() func() map[string][]api.Middleware {
 
 	mwChainMap := map[string][]api.Middleware{
 		"global":        globalMWChain,
-		"bb-jwt-chain":  append(globalMWChain, JWTAuthMW(lib.EnvGet("BB_JWT_SECRET"))),
-		"bb-key-chain":  append(globalMWChain, KeyAuthMW(lib.EnvGet("BB_API_KEY"))),
-		"wsd-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGet("WSD_API_KEY"))),
+		"bb-jwt-chain":  append(globalMWChain, JWTAuthMW(lib.EnvGetOrPanic("BB_JWT_SECRET"))),
+		"bb-key-chain":  append(globalMWChain, KeyAuthMW(lib.EnvGetOrPanic("BB_API_KEY"))),
+		"wsd-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGetOrPanic("WSD_API_KEY"))),
 	}
 
 	return func() map[string][]api.Middleware {
