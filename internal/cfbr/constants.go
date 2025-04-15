@@ -21,9 +21,9 @@ var classes = []string{
 	fbs, fcs, ii, iii,
 }
 
-/* Go batching
- * cfbr only makes 18 req but gets rl pretty quickly, 10 works but is not stable
- * 5 seems good for now
+/* CFBR batching
+ * cfbr only makes 18 req but gets ratelimited pretty quickly, 10 works but is not stable (yet?)
+ * 5 seems safe for now until a more robust ratelmiting logic is impl
  */
 const batchSize = 5
 

@@ -25,8 +25,8 @@ func collectCfbSeasonData(division string, year uint) (CFBRSeason, error) {
 
 func collectDataPoints(year uint, division string) (teams []Team, games []Game, stats []GameStats, err error) {
 
-	tChan := make(chan []Team, 1)
-	gChan := make(chan []Game, 1)
+	tChan := make(chan []Team)
+	gChan := make(chan []Game)
 	tasks := []func(){
 		func() {
 			teams, err = collectTeams(year, division)
@@ -45,7 +45,6 @@ func collectDataPoints(year uint, division string) (teams []Team, games []Game, 
 				return
 			}
 			gChan <- games
-
 		},
 	}
 
@@ -55,11 +54,6 @@ func collectDataPoints(year uint, division string) (teams []Team, games []Game, 
 
 	teams = <-tChan
 	games = <-gChan
-
-	log.Println("here")
-	log.Println(len(teams))
-	log.Println(len(games))
-	log.Println("here")
 
 	/* Team Ids (will be filtered down to div here) */
 	tIds := []uint{}
@@ -81,7 +75,6 @@ func collectTeams(year uint, division string) ([]Team, error) {
 		return nil, err
 	}
 
-	//TODO move to filter mod???
 	/* Filter by division */
 	divisionTeams := []Team{}
 
@@ -119,7 +112,6 @@ func collectGames(year uint, division string) ([]Game, error) {
 	go func() {
 		BatchRunner(tasks)
 		close(gChan)
-		log.Println("Inner g chan closed")
 	}()
 
 	games := []Game{}
