@@ -56,16 +56,15 @@ func fetchGameStats(year uint, week uint, seasonType string) ([]GameStats, error
 }
 
 func fetchDataToT[T any](route string) (T, error) {
-
-	//TODO rm
-	log.Println(route)
-
 	r, err := reqBuilder(route)
 	if err != nil {
 		var t T
 		return t, err
 	}
-	t, _, err := lib.FetchAndMap[T](r)
+	t, res, err := lib.FetchAndMap[T](r)
+	if err != nil {
+		log.Printf("Request to %v failed", res.Request.URL)
+	}
 	return t, err
 }
 
