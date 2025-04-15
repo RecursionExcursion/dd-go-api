@@ -6,16 +6,31 @@ import (
 )
 
 func getNewData(division string, year uint) (CFBRSeason, error) {
-	sea := newCFBRSeason()
+	sea := CFBRSeason{}
 
-	teams, err := collectTeams(year, division)
+	//TODO rm logs
+	log.Printf("Teams %d", len(teams))
+	log.Printf("Games %d", len(games))
+	log.Printf("Stats %d", len(stats))
+	// log.Println(stats[200])
+
+	teams, games, stats, err := collectDataPoints(year, division)
 	if err != nil {
 		return sea, err
 	}
 
-	games, err := collectGames(year, division)
+	return createCfbrTeams(teams, games, stats)
+}
+
+func collectDataPoints(year uint, division string) (teams []Team, games []Game, stats []GameStats, err error) {
+	teams, err = collectTeams(year, division)
 	if err != nil {
-		return sea, err
+		return
+	}
+
+	games, err = collectGames(year, division)
+	if err != nil {
+		return
 	}
 
 	/* Team Ids (will be filtered down to div here) */
@@ -24,58 +39,12 @@ func getNewData(division string, year uint) (CFBRSeason, error) {
 		tIds = append(tIds, t.Id)
 	}
 
-	stats, err := collectGameStats(year, games, tIds)
+	stats, err = collectGameStats(year, games, tIds)
 	if err != nil {
-		return sea, err
+		return
 	}
 
-	//TODO rm logs
-	log.Printf("Teams %d", len(teams))
-	log.Printf("Games %d", len(games))
-	log.Printf("Stats %d", len(stats))
-	// log.Println(stats[200])
-
-	for _, t := range teams {
-		sea.Schools[t.Id] = CFBRSchool{
-			Team:  t,
-			Games: []CompleteGame{},
-		}
-	}
-
-	for _, g := range games {
-
-		gs, err := getGameStatsById(stats, g.Id)
-		if err != nil {
-			return sea, err
-		}
-
-		homeSchool, ok := sea.Schools[g.HomeId]
-		if ok {
-			homeSchool.Games = append(homeSchool.Games,
-				CompleteGame{
-					Game:      g,
-					GameStats: gs,
-				},
-			)
-
-			sea.Schools[g.HomeId] = homeSchool
-		}
-
-		awaySchool, ok := sea.Schools[g.AwayId]
-		if ok {
-			awaySchool.Games = append(awaySchool.Games,
-				CompleteGame{
-					Game:      g,
-					GameStats: gs,
-				},
-			)
-
-			sea.Schools[g.AwayId] = awaySchool
-		}
-
-	}
-
-	return sea, nil
+	return
 }
 
 func collectTeams(year uint, division string) ([]Team, error) {
@@ -205,4 +174,50 @@ func getGameStatsById(stats []GameStats, id uint) (GameStats, error) {
 	}
 
 	return GameStats{}, fmt.Errorf("could not find game stat %v", id)
+}
+
+func createCfbrTeams(teams []Team, games []Game, stats []GameStats) (CFBRSeason, error) {
+	sea := EmptySeason()
+
+	for _, t := range teams {
+		sea.Schools[t.Id] = CFBRSchool{
+			Team:  t,
+			Games: []CompleteGame{},
+		}
+	}
+
+	for _, g := range games {
+
+		gs, err := getGameStatsById(stats, g.Id)
+		if err != nil {
+			return sea, err
+		}
+
+		homeSchool, ok := sea.Schools[g.HomeId]
+		if ok {
+			homeSchool.Games = append(homeSchool.Games,
+				CompleteGame{
+					Game:      g,
+					GameStats: gs,
+				},
+			)
+
+			sea.Schools[g.HomeId] = homeSchool
+		}
+
+		awaySchool, ok := sea.Schools[g.AwayId]
+		if ok {
+			awaySchool.Games = append(awaySchool.Games,
+				CompleteGame{
+					Game:      g,
+					GameStats: gs,
+				},
+			)
+
+			sea.Schools[g.AwayId] = awaySchool
+		}
+
+	}
+
+	return sea, nil
 }
