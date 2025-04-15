@@ -26,7 +26,8 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lib.Log("Decompressing Data", 5)
-	decompressedDbData, err := lib.GzipCompressor[betbot.FirstShotData]().Decompress(compressedData.Data)
+	// decompressedDbData, err := lib.NewGzipper[betbot.FirstShotData]().Decompress(compressedData.Data)
+	decompressedDbData, err := decompressFromString(compressedData.Data)
 	if err != nil {
 		api.Response.ServerError(w)
 		return
@@ -88,7 +89,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 		//compress data
 		lib.Log("Compressing Data", 5)
-		compressedData, err := lib.GzipCompressor[betbot.FirstShotData]().Compress(fsd)
+		compressedData, err := compressToString(fsd)
 		if err != nil {
 			log.Printf("Error while compressing data: %v", err)
 			return
@@ -204,4 +205,21 @@ var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 	}
 
 	api.Response.Ok(w, jwt)
+}
+
+var dataCompressor = lib.NewGzipper[betbot.FirstShotData]()
+
+func compressToString(fsd betbot.FirstShotData) (string, error) {
+	b, err := dataCompressor.Compress(fsd)
+	if err != nil {
+		return "", err
+	}
+	return lib.BytesToBase64(b), nil
+}
+func decompressFromString(dataString string) (betbot.FirstShotData, error) {
+	b, err := lib.Base64ToBytes(dataString)
+	if err != nil {
+		return betbot.FirstShotData{}, err
+	}
+	return dataCompressor.Decompress(b)
 }

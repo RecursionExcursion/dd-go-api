@@ -19,17 +19,14 @@ func RunBatch(tasks []func(), batchSize int) {
 		go func(task func()) {
 			defer wg.Done()
 
-			// Acquire semaphore
-			sem <- struct{}{}
-			//LOG
+			sem <- struct{}{} //  semaphore
 
 			curr := atomic.AddInt32(&activeWorkers, 1)
 			log.Printf("START: task %v/%v (active workers: %d)", i, taskLen, curr)
 
 			defer func() {
-				<-sem // Release after work
+				<-sem // Release
 
-				//LOG
 				curr := atomic.AddInt32(&activeWorkers, -1)
 				log.Printf("DONE: task %v/%v (active workers: %d)", i, taskLen, curr)
 			}()

@@ -2,6 +2,7 @@ package cfbr
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
@@ -55,6 +56,10 @@ func fetchGameStats(year uint, week uint, seasonType string) ([]GameStats, error
 }
 
 func fetchDataToT[T any](route string) (T, error) {
+
+	//TODO rm
+	log.Println(route)
+
 	r, err := reqBuilder(route)
 	if err != nil {
 		var t T

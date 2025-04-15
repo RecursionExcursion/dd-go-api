@@ -5,8 +5,14 @@ import (
 	"log"
 )
 
-func getNewData(division string, year uint) (CFBRSeason, error) {
+func collectCfbSeasonData(division string, year uint) (CFBRSeason, error) {
 	sea := CFBRSeason{}
+
+	//TODO add concurretcy
+	teams, games, stats, err := collectDataPoints(year, division)
+	if err != nil {
+		return sea, err
+	}
 
 	//TODO rm logs
 	log.Printf("Teams %d", len(teams))
@@ -14,24 +20,46 @@ func getNewData(division string, year uint) (CFBRSeason, error) {
 	log.Printf("Stats %d", len(stats))
 	// log.Println(stats[200])
 
-	teams, games, stats, err := collectDataPoints(year, division)
-	if err != nil {
-		return sea, err
-	}
-
 	return createCfbrTeams(teams, games, stats)
 }
 
 func collectDataPoints(year uint, division string) (teams []Team, games []Game, stats []GameStats, err error) {
-	teams, err = collectTeams(year, division)
-	if err != nil {
-		return
+
+	tChan := make(chan []Team, 1)
+	gChan := make(chan []Game, 1)
+	tasks := []func(){
+		func() {
+			teams, err = collectTeams(year, division)
+			if err != nil {
+				log.Println(err)
+				tChan <- []Team{}
+				return
+			}
+			tChan <- teams
+		},
+		func() {
+			games, err = collectGames(year, division)
+			if err != nil {
+				log.Println(err)
+				gChan <- []Game{}
+				return
+			}
+			gChan <- games
+
+		},
 	}
 
-	games, err = collectGames(year, division)
-	if err != nil {
-		return
-	}
+	go func() {
+		BatchRunner(tasks)
+	}()
+
+	teams = <-tChan
+	games = <-gChan
+
+	log.Println("here")
+	log.Println(len(teams))
+	log.Println(len(games))
+	log.Println("here")
 
 	/* Team Ids (will be filtered down to div here) */
 	tIds := []uint{}
@@ -67,81 +95,128 @@ func collectTeams(year uint, division string) ([]Team, error) {
 }
 
 func collectGames(year uint, division string) ([]Game, error) {
+
+	gChan := make(chan []Game)
+	tasks := []func(){
+		func() {
+			gReg, err := fetchGames(division, year, "regular")
+			if err != nil {
+				gChan <- []Game{}
+				return
+			}
+			gChan <- gReg
+		},
+		func() {
+			gPost, err := fetchGames(division, year, "postseason")
+			if err != nil {
+				gChan <- []Game{}
+				return
+			}
+			gChan <- gPost
+		},
+	}
+
+	go func() {
+		BatchRunner(tasks)
+		close(gChan)
+		log.Println("Inner g chan closed")
+	}()
+
 	games := []Game{}
+	for chGames := range gChan {
 
-	gReg, err := fetchGames(division, year, "regular")
-	if err != nil {
-		return nil, err
-	}
-
-	gPost, err := fetchGames(division, year, "postseason")
-	if err != nil {
-		return nil, err
-	}
-
-	addGames := func(gms []Game) {
-		for _, g := range gms {
+		for _, g := range chGames {
 			if g.Completed {
 				games = append(games, g)
 			}
 		}
 	}
 
-	addGames(gReg)
-	addGames(gPost)
-
 	return games, nil
 }
 
 func collectGameStats(year uint, games []Game, teamIds []uint) ([]GameStats, error) {
-	regSeason := []Game{}
-	postSeason := []Game{}
+	allGameStats := []GameStats{}
 
-	for _, g := range games {
-		if g.SeasonType == regularSeason {
-			regSeason = append(regSeason, g)
-		} else if g.SeasonType == postseason {
-			postSeason = append(postSeason, g)
-		} else {
-			log.Printf("No season type found on game %v", g.Id)
-		}
+	gsChan := make(chan []GameStats)
+	tasks := []func(){}
 
-	}
+	// regSeason := []Game{}
+	// postSeason := []Game{}
 
-	//Calc max week
+	// for _, g := range games {
+
+	// 	if g.SeasonType == regularSeason {
+
+	// 		regSeason = append(regSeason, g)
+
+	// 	} else if g.SeasonType == postseason {
+
+	// 		postSeason = append(postSeason, g)
+
+	// 	} else {
+	// 		log.Printf("No season type found on game %v", g.Id)
+	// 	}
+
+	// }
+
+	//Calc max week for reg season
 	maxWeek := 0
-	for _, g := range regSeason {
-		if g.Completed && g.Week > uint(maxWeek) {
+	for _, g := range games {
+		if g.Completed && g.SeasonType == regularSeason && g.Week > uint(maxWeek) {
 			maxWeek = int(g.Week)
 		}
 	}
-
-	allGameStats := []GameStats{}
 
 	// regular season
 	for i := 0; i <= maxWeek; i++ {
-		gs, err := fetchGameStats(year, uint(i), "regular")
+
+		tasks = append(tasks, func() {
+			gs, err := fetchGameStats(year, uint(i), "regular")
+			if err != nil {
+				// return nil, err
+				log.Println(err)
+				gsChan <- []GameStats{}
+				return
+			}
+			gsChan <- gs
+			// allGameStats = append(allGameStats, gs...)
+		})
+	}
+
+	// for _, g := range postSeason {
+	// 	if g.Completed && g.Week > uint(maxWeek) {
+	// 		maxWeek = int(g.Week)
+	// 	}
+	// }
+
+	//postseason
+	tasks = append(tasks, func() {
+
+		gs, err := fetchGameStats(year, 1, "postseason")
 		if err != nil {
-			return nil, err
+			log.Println(err)
+			// return nil, err
+			gsChan <- []GameStats{}
+			return
 		}
+		gsChan <- gs
+		// allGameStats = append(allGameStats, gs...)
+	})
+
+	go func() {
+		BatchRunner(tasks)
+		close(gsChan)
+	}()
+
+	for gs := range gsChan {
 		allGameStats = append(allGameStats, gs...)
 	}
 
-	for _, g := range postSeason {
-		if g.Completed && g.Week > uint(maxWeek) {
-			maxWeek = int(g.Week)
-		}
-	}
-
-	//postseason
-	gs, err := fetchGameStats(year, 1, "postseason")
-	if err != nil {
-		return nil, err
-	}
-	allGameStats = append(allGameStats, gs...)
-
 	//TODO move to filter mod???
 	//Filter gamestats against div
+
+	log.Printf("Allgamestats: %v", len(allGameStats))
 
 	filteredGs := []GameStats{}
 
@@ -157,9 +232,6 @@ func collectGameStats(year uint, games []Game, teamIds []uint) ([]GameStats, err
 		}
 
 	}
-
-	log.Printf("All %v", len(allGameStats))
-	log.Printf("Filt %v", len(filteredGs))
 
 	return filteredGs, nil
 }
@@ -221,3 +293,229 @@ func createCfbrTeams(teams []Team, games []Game, stats []GameStats) (CFBRSeason,
 
 	return sea, nil
 }
+
+// package cfbr
+
+// import (
+// 	"fmt"
+// 	"log"
+// )
+
+// func getNewData(division string, year uint) (CFBRSeason, error) {
+// 	sea := CFBRSeason{}
+
+// 	//TODO rm logs
+// 	log.Printf("Teams %d", len(teams))
+// 	log.Printf("Games %d", len(games))
+// 	log.Printf("Stats %d", len(stats))
+// 	// log.Println(stats[200])
+
+// 	teams, games, stats, err := collectDataPoints(year, division)
+// 	if err != nil {
+// 		return sea, err
+// 	}
+
+// 	return createCfbrTeams(teams, games, stats)
+// }
+
+// func collectDataPoints(year uint, division string) (teams []Team, games []Game, stats []GameStats, err error) {
+// 	teams, err = collectTeams(year, division)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	games, err = collectGames(year, division)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	/* Team Ids (will be filtered down to div here) */
+// 	tIds := []uint{}
+// 	for _, t := range teams {
+// 		tIds = append(tIds, t.Id)
+// 	}
+
+// 	stats, err = collectGameStats(year, games, tIds)
+// 	if err != nil {
+// 		return
+// 	}
+
+// 	return
+// }
+
+// func collectTeams(year uint, division string) ([]Team, error) {
+// 	allTeams, err := fetchTeams(year)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	//TODO move to filter mod???
+// 	/* Filter by division */
+// 	divisionTeams := []Team{}
+
+// 	for _, t := range allTeams {
+// 		if t.Classification == division {
+// 			divisionTeams = append(divisionTeams, t)
+// 		}
+// 	}
+
+// 	return divisionTeams, nil
+// }
+
+// func collectGames(year uint, division string) ([]Game, error) {
+// 	games := []Game{}
+
+// 	gReg, err := fetchGames(division, year, "regular")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	gPost, err := fetchGames(division, year, "postseason")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	addGames := func(gms []Game) {
+// 		for _, g := range gms {
+// 			if g.Completed {
+// 				games = append(games, g)
+// 			}
+// 		}
+// 	}
+
+// 	addGames(gReg)
+// 	addGames(gPost)
+
+// 	return games, nil
+// }
+
+// func collectGameStats(year uint, games []Game, teamIds []uint) ([]GameStats, error) {
+// 	regSeason := []Game{}
+// 	postSeason := []Game{}
+
+// 	for _, g := range games {
+// 		if g.SeasonType == regularSeason {
+// 			regSeason = append(regSeason, g)
+// 		} else if g.SeasonType == postseason {
+// 			postSeason = append(postSeason, g)
+// 		} else {
+// 			log.Printf("No season type found on game %v", g.Id)
+// 		}
+
+// 	}
+
+// 	//Calc max week
+// 	maxWeek := 0
+// 	for _, g := range regSeason {
+// 		if g.Completed && g.Week > uint(maxWeek) {
+// 			maxWeek = int(g.Week)
+// 		}
+// 	}
+
+// 	allGameStats := []GameStats{}
+
+// 	// regular season
+// 	for i := 0; i <= maxWeek; i++ {
+// 		gs, err := fetchGameStats(year, uint(i), "regular")
+// 		if err != nil {
+// 			return nil, err
+// 		}
+// 		allGameStats = append(allGameStats, gs...)
+// 	}
+
+// 	for _, g := range postSeason {
+// 		if g.Completed && g.Week > uint(maxWeek) {
+// 			maxWeek = int(g.Week)
+// 		}
+// 	}
+
+// 	//postseason
+// 	gs, err := fetchGameStats(year, 1, "postseason")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	allGameStats = append(allGameStats, gs...)
+
+// 	//TODO move to filter mod???
+// 	//Filter gamestats against div
+
+// 	log.Println(len(allGameStats))
+
+// 	filteredGs := []GameStats{}
+
+// 	for _, st := range allGameStats {
+// 		t1 := st.Teams[0]
+// 		t2 := st.Teams[1]
+
+// 		for _, tId := range teamIds {
+// 			if tId == t1.SchoolId || tId == t2.SchoolId {
+// 				filteredGs = append(filteredGs, st)
+// 				break
+// 			}
+// 		}
+
+// 	}
+
+// 	log.Printf("All %v", len(allGameStats))
+// 	log.Printf("Filt %v", len(filteredGs))
+
+// 	return filteredGs, nil
+// }
+
+// func getGameStatsById(stats []GameStats, id uint) (GameStats, error) {
+// 	for _, gs := range stats {
+
+// 		if gs.Id == id {
+// 			return gs, nil
+// 		}
+
+// 	}
+
+// 	return GameStats{}, fmt.Errorf("could not find game stat %v", id)
+// }
+
+// func createCfbrTeams(teams []Team, games []Game, stats []GameStats) (CFBRSeason, error) {
+// 	sea := EmptySeason()
+
+// 	for _, t := range teams {
+// 		sea.Schools[t.Id] = CFBRSchool{
+// 			Team:  t,
+// 			Games: []CompleteGame{},
+// 		}
+// 	}
+
+// 	for _, g := range games {
+
+// 		gs, err := getGameStatsById(stats, g.Id)
+// 		if err != nil {
+// 			return sea, err
+// 		}
+
+// 		homeSchool, ok := sea.Schools[g.HomeId]
+// 		if ok {
+// 			homeSchool.Games = append(homeSchool.Games,
+// 				CompleteGame{
+// 					Game:      g,
+// 					GameStats: gs,
+// 				},
+// 			)
+
+// 			sea.Schools[g.HomeId] = homeSchool
+// 		}
+
+// 		awaySchool, ok := sea.Schools[g.AwayId]
+// 		if ok {
+// 			awaySchool.Games = append(awaySchool.Games,
+// 				CompleteGame{
+// 					Game:      g,
+// 					GameStats: gs,
+// 				},
+// 			)
+
+// 			sea.Schools[g.AwayId] = awaySchool
+// 		}
+
+// 	}
+
+// 	return sea, nil
+// }

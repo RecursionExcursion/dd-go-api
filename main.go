@@ -12,7 +12,18 @@ import (
 func main() {
 	// go beeGeesProtocol()
 	// app.App()
-	cfbr.CFBR()
+	season, err := cfbr.Create("fbs", 2024)
+	if err != nil {
+		panic(err)
+	}
+
+	s, err := season.FindSchoolById(194)
+	if err != nil {
+		panic(err)
+	}
+	// log.Println(s)
+	log.Println(len(s.Games))
+
 }
 
 func beeGeesProtocol() {

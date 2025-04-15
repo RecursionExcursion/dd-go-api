@@ -2,10 +2,13 @@ package cfbr
 
 import (
 	"errors"
-	"log"
+	"fmt"
+	"strconv"
 )
 
-/* Season */
+/* CFBRSeason- This is the main data structure for this module
+ *
+ */
 
 type CFBRSeason struct {
 	Schools map[uint]CFBRSchool
@@ -17,13 +20,43 @@ func EmptySeason() CFBRSeason {
 	}
 }
 
-func NewSeason(divsion string, year uint) CFBRSeason {
-	season, err := getNewData("fbs", 2024)
+// First accept args (stat weights)/(year)
+func Create(divsion string, year uint) (CFBRSeason, error) {
+	season, err := collectCfbSeasonData(divsion, year)
 	if err != nil {
-		panic(err)
+		return CFBRSeason{}, err
 	}
-	return season
+	return season, nil
 }
+
+func (c *CFBRSeason) Save() map[string]CFBRSchool {
+	outMap := make(map[string]CFBRSchool, len(c.Schools))
+
+	for k, v := range c.Schools {
+		outMap[fmt.Sprint(k)] = v
+	}
+	return outMap
+}
+
+func (c *CFBRSeason) Load(inMap map[string]CFBRSchool) (CFBRSeason, error) {
+	schoolMap := make(map[uint]CFBRSchool, len(inMap))
+
+	for k, v := range inMap {
+		n, err := strconv.ParseUint(k, 10, 0)
+		if err != nil {
+			return CFBRSeason{}, err
+		}
+
+		schoolMap[uint(n)] = v
+	}
+
+	return CFBRSeason{
+		Schools: schoolMap,
+	}, nil
+
+}
+
+/* CFBRSeason- Util fns */
 
 func (c *CFBRSeason) FindSchoolById(id uint) (s CFBRSchool, err error) {
 	s, ok := c.Schools[id]
@@ -45,30 +78,6 @@ func (c *CFBRSeason) FindGameById(id uint) (CompleteGame, error) {
 	}
 
 	return CompleteGame{}, errors.New("Team not found")
-}
-
-// First accept args (stat weights)/(year)
-func CFBR() {
-
-	//Use compressed data or fetch new
-
-	//use old
-
-	//fetch new
-	season, err := getNewData("fbs", 2024)
-	if err != nil {
-		panic(err)
-	}
-
-	/* TODO test logs, -rm */
-
-	s, err := season.FindSchoolById(194)
-	if err != nil {
-		panic(err)
-	}
-	log.Println(s)
-	log.Println(len(s.Games))
-
 }
 
 /* Compiled School */
