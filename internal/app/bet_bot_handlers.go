@@ -13,6 +13,15 @@ import (
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
+var fsdStringCompressor = lib.NewCompressor[betbot.FirstShotData](
+	func(b []byte) (string, error) {
+		return lib.BytesToBase64(b), nil
+	},
+	func(s string) ([]byte, error) {
+		return lib.Base64ToBytes(s)
+	},
+)
+
 var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	_, dataRepo := BetBotRepository()
 
@@ -27,8 +36,7 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lib.Log("Decompressing Data", 5)
-	// decompressedDbData, err := lib.NewGzipper[betbot.FirstShotData]().Decompress(compressedData.Data)
-	decompressedDbData, err := decompressFromString(compressedData.Data)
+	decompressedDbData, err := fsdStringCompressor.FromR(compressedData.Data)
 	if err != nil {
 		api.Response.ServerError(w)
 		return
@@ -90,7 +98,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 		//compress data
 		lib.Log("Compressing Data", 5)
-		compressedData, err := compressToString(fsd)
+		compressedData, err := fsdStringCompressor.ToR(fsd)
 		if err != nil {
 			log.Printf("Error while compressing data: %v", err)
 			return
@@ -210,21 +218,4 @@ var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 	}
 
 	api.Response.Ok(w, jwt)
-}
-
-var dataCompressor = lib.NewGzipper[betbot.FirstShotData]()
-
-func compressToString(fsd betbot.FirstShotData) (string, error) {
-	b, err := dataCompressor.Compress(fsd)
-	if err != nil {
-		return "", err
-	}
-	return lib.BytesToBase64(b), nil
-}
-func decompressFromString(dataString string) (betbot.FirstShotData, error) {
-	b, err := lib.Base64ToBytes(dataString)
-	if err != nil {
-		return betbot.FirstShotData{}, err
-	}
-	return dataCompressor.Decompress(b)
 }

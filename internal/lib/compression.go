@@ -6,13 +6,55 @@ import (
 	"encoding/json"
 )
 
-type DataCompressor[T any] struct {
+type SerializeFn[R any] = func([]byte) (R, error)
+type DeserializeFn[R any] = func(R) ([]byte, error)
+
+type Compressor[T any, R any] struct {
+	compressor dataCompressor[T]
+	ToR        func(T) (R, error)
+	FromR      func(R) (T, error)
+}
+
+func NewCompressor[T any, R any](
+	to SerializeFn[R],
+	from DeserializeFn[R],
+) Compressor[T, R] {
+	c := Compressor[T, R]{
+		compressor: NewGzipper[T](),
+	}
+
+	/* Define fns  */
+
+	c.ToR = func(t T) (R, error) {
+		b, err := c.compressor.Compress(t)
+		if err != nil {
+			var r R
+			return r, err
+		}
+		return to(b)
+	}
+
+	c.FromR = func(r R) (T, error) {
+		b, err := from(r)
+
+		if err != nil {
+			var t T
+			return t, err
+		}
+
+		return c.compressor.Decompress(b)
+	}
+
+	return c
+}
+
+type dataCompressor[T any] struct {
 	Compress   func(data T) ([]byte, error)
 	Decompress func(b []byte) (T, error)
 }
 
-func NewGzipper[T any]() DataCompressor[T] {
-	return DataCompressor[T]{
+func NewGzipper[T any]() dataCompressor[T] {
+	return dataCompressor[T]{
 		Compress: func(data T) ([]byte, error) {
 			var buf bytes.Buffer
 			var emptyBuffer = []byte{}

@@ -14,8 +14,6 @@ import (
 
 var atlasUri = EnvGetOrPanic("ATLAS_URI")
 
-type queryFn[T any] func(c *mongo.Collection) (T, error)
-
 type MongoConnection[T any] struct {
 	Db         string
 	Collection string
@@ -32,9 +30,13 @@ func connectMongoClient() (*mongo.Client, error) {
 	return client, nil
 }
 
-/* mongoQuery creates, manages, and closes connection while executing
- * the custom query fn passed in
- */
+type queryFn[T any] func(c *mongo.Collection) (T, error)
+
+/*
+	mongoQuery creates, manages, and closes connection while executing
+
+the custom query fn passed in
+*/
 func mongoQuery[T any](mc MongoConnection[T], query queryFn[T]) (T, error) {
 	client, err := connectMongoClient()
 	if err != nil {
@@ -99,6 +101,7 @@ func (mc *MongoConnection[T]) FindFirstT() (T, error) {
 }
 
 // Create/Update
+// TODO add saveById
 func (mc *MongoConnection[T]) SaveT(t T) (bool, error) {
 	_, err := mongoQuery(*mc, func(c *mongo.Collection) (T, error) {
 		_, err := c.InsertOne(context.TODO(), t)
