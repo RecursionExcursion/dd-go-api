@@ -20,7 +20,7 @@ func collectCfbSeasonData(division string, year uint) (CFBRSeason, error) {
 	log.Printf("Stats %d", len(stats))
 	// log.Println(stats[200])
 
-	return createCfbrTeams(teams, games, stats)
+	return createCfbrTeams(teams, games, stats, division)
 }
 
 func collectDataPoints(year uint, division string) (teams []Team, games []Game, stats []GameStats, err error) {
@@ -211,8 +211,9 @@ func getGameStatsById(stats []GameStats, id uint) (GameStats, error) {
 	return GameStats{}, fmt.Errorf("could not find game stat %v", id)
 }
 
-func createCfbrTeams(teams []Team, games []Game, stats []GameStats) (CFBRSeason, error) {
+func createCfbrTeams(teams []Team, games []Game, stats []GameStats, division string) (CFBRSeason, error) {
 	sea := EmptySeason()
+	sea.Division = division
 
 	for _, t := range teams {
 		sea.Schools[t.Id] = CFBRSchool{

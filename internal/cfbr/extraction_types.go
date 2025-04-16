@@ -1,6 +1,6 @@
 package cfbr
 
-/* Retrieval types */
+/* Data Retrieval types */
 
 type Team struct {
 	Id             uint     `json:"id"`

@@ -63,6 +63,7 @@ func routes() []api.RouteHandler {
 	var routes = []api.RouteHandler{getbaseRoute, testRoute}
 	routes = append(routes, betbotRoutes()...)
 	routes = append(routes, wsdRoutes()...)
+	routes = append(routes, cfbrRoutes()...)
 
 	return routes
 }
@@ -167,6 +168,22 @@ func wsdRoutes() []api.RouteHandler {
 	}
 }
 
+func cfbrRoutes() []api.RouteHandler {
+	mwchains := mwChainMap()
+	cfbrChain := mwchains["cfbr-chain"]
+
+	var getCfbrRoute = api.RouteHandler{
+		MethodAndPath: "GET /cfbr",
+		Handler:       handleCfbrGet,
+		Middleware:    cfbrChain,
+	}
+
+	return []api.RouteHandler{
+		getCfbrRoute,
+	}
+
+}
+
 var mwChainMap = func() func() map[string][]api.Middleware {
 	geoParams := GeoLimitParams{
 		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
@@ -183,6 +200,7 @@ var mwChainMap = func() func() map[string][]api.Middleware {
 		"bb-jwt-chain":  append(globalMWChain, JWTAuthMW(lib.EnvGetOrPanic("BB_JWT_SECRET"))),
 		"bb-key-chain":  append(globalMWChain, KeyAuthMW(lib.EnvGetOrPanic("BB_API_KEY"))),
 		"wsd-key-chain": append(globalMWChain, KeyAuthMW(lib.EnvGetOrPanic("WSD_API_KEY"))),
+		"cfbr-chain":    append(globalMWChain),
 	}
 
 	return func() map[string][]api.Middleware {

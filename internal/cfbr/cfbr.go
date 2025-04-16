@@ -10,13 +10,23 @@ import (
  *
  */
 
+type SerializeableCompressedSeason struct {
+	Id        string     `json:"id"`
+	CreatedAt int        `json:"createdAt"`
+	Season    CFBRSeason `json:"season"`
+}
+
+type SchoolMap = map[uint]CFBRSchool
+type SerializableSchoolMap = map[string]CFBRSchool
+
 type CFBRSeason struct {
-	Schools map[uint]CFBRSchool
+	Division string
+	Schools  SchoolMap
 }
 
 func EmptySeason() CFBRSeason {
 	return CFBRSeason{
-		Schools: make(map[uint]CFBRSchool),
+		Schools: make(SchoolMap),
 	}
 }
 
@@ -29,8 +39,8 @@ func Create(divsion string, year uint) (CFBRSeason, error) {
 	return season, nil
 }
 
-func (c *CFBRSeason) Save() map[string]CFBRSchool {
-	outMap := make(map[string]CFBRSchool, len(c.Schools))
+func (c *CFBRSeason) Save() SerializableSchoolMap {
+	outMap := make(SerializableSchoolMap, len(c.Schools))
 
 	for k, v := range c.Schools {
 		outMap[fmt.Sprint(k)] = v
@@ -39,7 +49,7 @@ func (c *CFBRSeason) Save() map[string]CFBRSchool {
 }
 
 func (c *CFBRSeason) Load(inMap map[string]CFBRSchool) (CFBRSeason, error) {
-	schoolMap := make(map[uint]CFBRSchool, len(inMap))
+	schoolMap := make(SchoolMap, len(inMap))
 
 	for k, v := range inMap {
 		n, err := strconv.ParseUint(k, 10, 0)

@@ -14,11 +14,12 @@ import (
 )
 
 var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	_, dataRepo := BetBotRepository()
 
 	timer := lib.StartTimer()
 
 	lib.Log("Querying DB for betbot data", 5)
-	compressedData, err := BetBotRepository().dataRepo.findTById(dataId)
+	compressedData, err := dataRepo.FindTById(dataId)
 	if err != nil {
 		log.Println(err)
 		api.Response.ServerError(w, "")
@@ -100,9 +101,11 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 			Data:    compressedData,
 		}
 
+		_, dataRepo := BetBotRepository()
+
 		//Wipe old data
 		lib.Log("Wiping stale Data", 5)
-		ok, err := BetBotRepository().dataRepo.deleteTById(dataId)
+		ok, err := dataRepo.DeleteById(dataId)
 		if err != nil || !ok {
 			log.Println("Error while wiping data")
 			lib.Log(err.Error(), -1)
@@ -111,7 +114,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 		//save data
 		lib.Log("Saving New Data", 5)
-		_, err = BetBotRepository().dataRepo.saveT(compressed)
+		_, err = dataRepo.SaveT(compressed)
 		if err != nil {
 			log.Println("Error while saving data")
 			lib.Log(err.Error(), -1)
@@ -183,7 +186,9 @@ var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	usr, err := BetBotRepository().userRepo.findFirst()
+	userRepo, _ := BetBotRepository()
+
+	usr, err := userRepo.FindFirstT()
 	if err != nil {
 		api.Response.NotFound(w)
 		return

@@ -5,25 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
+	"github.com/recursionexcursion/dd-go-api/internal/app"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
 func main() {
-	// go beeGeesProtocol()
-	// app.App()
-	season, err := cfbr.Create("fbs", 2024)
-	if err != nil {
-		panic(err)
-	}
-
-	s, err := season.FindSchoolById(194)
-	if err != nil {
-		panic(err)
-	}
-	// log.Println(s)
-	log.Println(len(s.Games))
-
+	go beeGeesProtocol()
+	app.App()
 }
 
 func beeGeesProtocol() {
