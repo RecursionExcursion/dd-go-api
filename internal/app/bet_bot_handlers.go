@@ -36,7 +36,7 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lib.Log("Decompressing Data", 5)
-	decompressedDbData, err := fsdStringCompressor.FromR(compressedData.Data)
+	decompressedDbData, err := fsdStringCompressor.Decompress(compressedData.Data)
 	if err != nil {
 		api.Response.ServerError(w)
 		return
@@ -98,7 +98,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 		//compress data
 		lib.Log("Compressing Data", 5)
-		compressedData, err := fsdStringCompressor.ToR(fsd)
+		compressedData, err := fsdStringCompressor.Compress(fsd)
 		if err != nil {
 			log.Printf("Error while compressing data: %v", err)
 			return

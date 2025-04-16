@@ -11,13 +11,13 @@ type DeserializeFn[R any] = func(R) ([]byte, error)
 
 type Compressor[T any, R any] struct {
 	compressor dataCompressor[T]
-	ToR        func(T) (R, error)
-	FromR      func(R) (T, error)
+	Compress   func(T) (R, error)
+	Decompress func(R) (T, error)
 }
 
 func NewCompressor[T any, R any](
-	to SerializeFn[R],
-	from DeserializeFn[R],
+	serializeToRFn SerializeFn[R],
+	deserializeFromRFn DeserializeFn[R],
 ) Compressor[T, R] {
 	c := Compressor[T, R]{
 		compressor: NewGzipper[T](),
@@ -25,17 +25,17 @@ func NewCompressor[T any, R any](
 
 	/* Define fns  */
 
-	c.ToR = func(t T) (R, error) {
+	c.Compress = func(t T) (R, error) {
 		b, err := c.compressor.Compress(t)
 		if err != nil {
 			var r R
 			return r, err
 		}
-		return to(b)
+		return serializeToRFn(b)
 	}
 
-	c.FromR = func(r R) (T, error) {
-		b, err := from(r)
+	c.Decompress = func(r R) (T, error) {
+		b, err := deserializeFromRFn(r)
 
 		if err != nil {
 			var t T

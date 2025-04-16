@@ -32,11 +32,7 @@ func connectMongoClient() (*mongo.Client, error) {
 
 type queryFn[T any] func(c *mongo.Collection) (T, error)
 
-/*
-	mongoQuery creates, manages, and closes connection while executing
-
-the custom query fn passed in
-*/
+/* mongoQuery creates, manages, and closes connection while executingthe custom query fn passed in */
 func mongoQuery[T any](mc MongoConnection[T], query queryFn[T]) (T, error) {
 	client, err := connectMongoClient()
 	if err != nil {
