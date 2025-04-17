@@ -11,9 +11,10 @@ import (
  */
 
 type SerializeableCompressedSeason struct {
-	Id        string     `json:"id"`
-	CreatedAt int        `json:"createdAt"`
-	Season    CFBRSeason `json:"season"`
+	Id               string `json:"id"`
+	CreatedAt        int    `json:"createdAt"`
+	Year             int    `json:"year"`
+	CompressedSeason string `json:"season"`
 }
 
 type SchoolMap = map[uint]CFBRSchool

@@ -97,10 +97,25 @@ func (mc *MongoConnection[T]) FindFirstT() (T, error) {
 }
 
 // Create/Update
-// TODO add saveById
+/* SaveT- Always inserts the document */
 func (mc *MongoConnection[T]) SaveT(t T) (bool, error) {
 	_, err := mongoQuery(*mc, func(c *mongo.Collection) (T, error) {
 		_, err := c.InsertOne(context.TODO(), t)
+		if err != nil {
+			return t, err
+		}
+		return t, nil
+	})
+	return err == nil, err
+}
+
+/* UpsertT- Updates doc if filter matches, otherwise it creates a new entry */
+func (mc *MongoConnection[T]) UpsertT(t T, filter bson.M) (bool, error) {
+	_, err := mongoQuery(*mc, func(c *mongo.Collection) (T, error) {
+		opts := options.Update().SetUpsert(true)
+
+		// Perform upsert: update matching doc or insert if not exists
+		_, err := c.UpdateOne(context.TODO(), filter, bson.M{"$set": t}, opts)
 		if err != nil {
 			return t, err
 		}

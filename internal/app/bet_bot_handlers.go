@@ -13,12 +13,14 @@ import (
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
-var fsdStringCompressor = lib.NewCompressor[betbot.FirstShotData](
-	func(b []byte) (string, error) {
-		return lib.BytesToBase64(b), nil
-	},
-	func(s string) ([]byte, error) {
-		return lib.Base64ToBytes(s)
+var fsdStringCompressor = lib.GzipCompressor[betbot.FirstShotData](
+	lib.Codec[string]{
+		Encode: func(b []byte) (string, error) {
+			return lib.BytesToBase64(b), nil
+		},
+		Decode: func(s string) ([]byte, error) {
+			return lib.Base64ToBytes(s)
+		},
 	},
 )
 
