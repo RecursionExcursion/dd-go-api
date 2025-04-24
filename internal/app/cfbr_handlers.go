@@ -52,7 +52,7 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 	div := "fbs"
 	yr := 20245
 
-	szn := func() cfbr.CFBRSeason {
+	szn, err := func() (cfbr.CFBRSeason, error) {
 		cfbrRepo := CfbrRepository()
 		queryId := createQueryId(yr, div)
 
@@ -63,7 +63,7 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 			szn, err := cfbr.Create(div, uint(yr))
 			if err != nil {
-				panic(err)
+				return cfbr.CFBRSeason{}, err
 			}
 
 			/* TODO
@@ -71,8 +71,7 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 			 */
 			compressedSeason, err := brotCompressor.Compress(szn)
 			if err != nil {
-				//TODO
-				panic(err)
+				return cfbr.CFBRSeason{}, err
 			}
 
 			scs := cfbr.SerializeableCompressedSeason{
@@ -86,17 +85,19 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 			log.Println("Season saved")
 
-			return szn
+			return szn, nil
 		} else {
 			log.Println("Season found decompressing")
 			szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
 			if err != nil {
-				//TODO
-				panic(err)
+				return cfbr.CFBRSeason{}, err
 			}
-			return szn
+			return szn, nil
 		}
 	}()
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Printf("Season %v %v created with %v schools and %v games", szn.Year, szn.Division, len(szn.Schools), len(szn.Games))
 	//TODO compute weights
