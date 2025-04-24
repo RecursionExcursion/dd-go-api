@@ -4,16 +4,20 @@ import "log"
 
 type TrackedStats struct {
 	Total struct {
+		Wins         int
+		Losses       int
 		TotalOffense int
 		TotalDefense int
 		PF           int
 		PA           int
 	}
 	PG struct {
-		OffPG int
-		DefPG int
-		PFPG  int
-		PAPG  int
+		WinsPG   int
+		LossesPG int
+		OffPG    int
+		DefPG    int
+		PFPG     int
+		PAPG     int
 	}
 }
 
@@ -46,19 +50,15 @@ func FindLastWeek(s CFBRSeason) int {
 
 	lastRegSeasonWeek := 0
 
-	for _, sch := range s.Schools {
-		for _, g := range sch.Games {
-			if g.Game.SeasonType == regularSeason &&
-				g.Game.Completed &&
-				g.Game.Week > uint(lastRegSeasonWeek) {
-				lastRegSeasonWeek = int(g.Game.Week)
-
-			}
-
+	for _, g := range s.Games {
+		if g.Game.SeasonType == regularSeason &&
+			g.Game.Completed &&
+			g.Game.Week > uint(lastRegSeasonWeek) {
+			lastRegSeasonWeek = int(g.Game.Week)
 		}
 	}
 
-	log.Println("Last week")
+	log.Printf("Last Reg szn week %v", lastRegSeasonWeek)
 
 	return lastRegSeasonWeek
 }

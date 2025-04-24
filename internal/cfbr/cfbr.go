@@ -3,11 +3,23 @@ package cfbr
 import (
 	"errors"
 	"fmt"
-	"strconv"
 )
 
+/* Compiled School */
+
+type CompleteGame struct {
+	Id        uint
+	Game      Game
+	GameStats GameStats
+}
+
+type CFBRSchool struct {
+	Team  Team
+	Games []uint
+}
+
 /* CFBRSeason- This is the main data structure for this module
- *
+*
  */
 
 type SerializeableCompressedSeason struct {
@@ -17,12 +29,14 @@ type SerializeableCompressedSeason struct {
 	CompressedSeason string `json:"season"`
 }
 
-type SchoolMap = map[uint]CFBRSchool
-type SerializableSchoolMap = map[string]CFBRSchool
+type GameMap = map[string]CompleteGame
+type SchoolMap = map[string]CFBRSchool
 
 type CFBRSeason struct {
+	Year     int
 	Division string
 	Schools  SchoolMap
+	Games    GameMap
 }
 
 func EmptySeason() CFBRSeason {
@@ -40,75 +54,20 @@ func Create(divsion string, year uint) (CFBRSeason, error) {
 	return season, nil
 }
 
-func (c *CFBRSeason) Save() SerializableSchoolMap {
-	outMap := make(SerializableSchoolMap, len(c.Schools))
-
-	for k, v := range c.Schools {
-		outMap[fmt.Sprint(k)] = v
-	}
-	return outMap
-}
-
-func (c *CFBRSeason) Load(inMap map[string]CFBRSchool) (CFBRSeason, error) {
-	schoolMap := make(SchoolMap, len(inMap))
-
-	for k, v := range inMap {
-		n, err := strconv.ParseUint(k, 10, 0)
-		if err != nil {
-			return CFBRSeason{}, err
-		}
-
-		schoolMap[uint(n)] = v
-	}
-
-	return CFBRSeason{
-		Schools: schoolMap,
-	}, nil
-
-}
-
 /* CFBRSeason- Util fns */
 
 func (c *CFBRSeason) FindSchoolById(id uint) (s CFBRSchool, err error) {
-	s, ok := c.Schools[id]
+	s, ok := c.Schools[fmt.Sprint(id)]
 	if !ok {
 		err = errors.New("school not found")
 	}
-
 	return s, err
 }
 
-func (c *CFBRSeason) FindGameById(id uint) (CompleteGame, error) {
-
-	for _, s := range c.Schools {
-		g, err := s.FindGameById(id)
-		if err != nil {
-			continue
-		}
-		return g, nil
+func (c *CFBRSeason) FindGameById(id uint) (cg CompleteGame, err error) {
+	cg, ok := c.Games[fmt.Sprint(id)]
+	if !ok {
+		err = errors.New("game not found")
 	}
-
-	return CompleteGame{}, errors.New("Team not found")
-}
-
-/* Compiled School */
-
-type CompleteGame struct {
-	Game      Game
-	GameStats GameStats
-}
-
-type CFBRSchool struct {
-	Team  Team
-	Games []CompleteGame
-}
-
-func (s *CFBRSchool) FindGameById(id uint) (CompleteGame, error) {
-	for _, g := range s.Games {
-		if g.Game.Id == id {
-			return g, nil
-		}
-	}
-
-	return CompleteGame{}, errors.New("Game not found")
+	return cg, err
 }
