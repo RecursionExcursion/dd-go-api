@@ -28,3 +28,9 @@ var classes = []string{
 const batchSize = 5
 
 var BatchRunner = lib.RunBatchSizeClosure(batchSize)
+
+var trackedStatCategories = []string{
+	"totalYards",
+}
+
+var totalYardsStatKey = "totalYards"

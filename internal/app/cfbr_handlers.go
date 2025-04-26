@@ -50,7 +50,7 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 	//TODO placeholders
 	//TODO sanitize inputs year < now.year, div must be valid, etc
 	div := "fbs"
-	yr := 20245
+	yr := 2024
 
 	szn, err := func() (cfbr.CFBRSeason, error) {
 		cfbrRepo := CfbrRepository()
@@ -99,8 +99,12 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	fmt.Printf("Season %v %v created with %v schools and %v games", szn.Year, szn.Division, len(szn.Schools), len(szn.Games))
+	fmt.Printf("Season %v %v created with %v schools and %v games\n", szn.Year, szn.Division, len(szn.Schools), len(szn.Games))
 	//TODO compute weights
+	_, err = cfbr.ComputeSeason(szn)
+	if err != nil {
+		panic(err)
+	}
 
 	api.Response.Ok(w)
 }

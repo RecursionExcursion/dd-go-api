@@ -10,15 +10,15 @@ import (
 )
 
 func main() {
-	go beeGeesProtocol()
+	go beeGeesProtocol(12)
 	app.App()
 }
 
-func beeGeesProtocol() {
+func beeGeesProtocol(min int) {
 	self := lib.EnvGetOrPanic("SELF_URL")
 
 	for {
-		<-time.After(time.Minute * 12)
+		<-time.After(time.Minute * time.Duration(min))
 		http.Get(self)
 		log.Printf("BGP %v", time.Now())
 	}
