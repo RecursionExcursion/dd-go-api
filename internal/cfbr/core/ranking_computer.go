@@ -1,7 +1,7 @@
-package cfbr
+package core
 
 import (
-	"fmt"
+	"errors"
 	"log"
 	"strconv"
 )
@@ -31,8 +31,19 @@ type TrackedStats struct {
 	}
 }
 
+func (ts *TrackedStats) append(next TrackedStats) {
+	ts.Total.Wins.Value += next.Total.Wins.Value
+	ts.Total.Losses.Value += next.Total.Losses.Value
+
+	ts.Total.TotalOffense.Value += next.Total.TotalOffense.Value
+	ts.Total.TotalDefense.Value += next.Total.TotalDefense.Value
+
+	ts.Total.PF.Value += next.Total.PF.Value
+	ts.Total.PA.Value += next.Total.PA.Value
+}
+
 type WeeklyTeam struct {
-	Id          uint
+	Id          int
 	Week        int
 	GamesPlayed []string
 	Stats       TrackedStats
@@ -53,7 +64,6 @@ func ComputeSeason(s CFBRSeason) (ComputedSeason, error) {
 		PostSeasonWeeks:    make([][]WeeklyTeam, 1),
 	}
 
-	//DO ALOT OF WORK
 	for i := range lw {
 		currWeek := i + 1
 		weekTeams := make([]WeeklyTeam, len(s.Schools))
@@ -73,8 +83,17 @@ func ComputeSeason(s CFBRSeason) (ComputedSeason, error) {
 					log.Panicf("Game %v not found", gId)
 				}
 
+				if gm.Game.SeasonType == postseason || gm.Game.Week > currWeek {
+					continue
+				}
+
 				//Compile stats from game (gm)
 				ts, err := compileGameStats(t.Team.Id, gm)
+				if err != nil {
+					panic(err)
+				}
+
+				wt.Stats.append(ts)
 			}
 
 			//TODO get stats for games played
@@ -94,80 +113,84 @@ func FindLastWeek(s CFBRSeason) int {
 	for _, g := range s.Games {
 		if g.Game.SeasonType == regularSeason &&
 			g.Game.Completed &&
-			g.Game.Week > uint(lastRegSeasonWeek) {
-			lastRegSeasonWeek = int(g.Game.Week)
+			g.Game.Week > lastRegSeasonWeek {
+			lastRegSeasonWeek = g.Game.Week
 		}
 	}
 
 	return lastRegSeasonWeek
 }
 
-func compileGameStats(teamId uint, game CompleteGame) (TrackedStats, error) {
+func compileGameStats(tId int, cg CompleteGame) (TrackedStats, error) {
 
-	tm, opp, err := func() (GameTeam, GameTeam, error) {
-		currTeam := GameTeam{}
-		oppTeam := GameTeam{}
-
-		for _, t := range game.GameStats.Teams {
-			if t.SchoolId == teamId {
-				currTeam = t
-			}
-		}
-
-		return currTeam, oppTeam, fmt.Errorf("Team %v not found", teamId)
-	}()
+	tm, opp, err := cg.getTeam(tId)
 	if err != nil {
 		return TrackedStats{}, err
 	}
 
-	ts := TrackedStats{}
+	off, err := getTotalYards(tm)
+	if err != nil {
+		log.Printf("Off could not be found for team %v in game %v", tId, cg.Id)
+	}
 
-	//OFF
+	def, err := getTotalYards(opp)
+	if err != nil {
+		log.Printf("Def could not be found for team %v in game %v", tId, cg.Id)
+	}
+
+	win, loss := getWinLoss(tm, opp)
+	ts := TrackedStats{
+		Total: struct {
+			Wins         Stat
+			Losses       Stat
+			TotalOffense Stat
+			TotalDefense Stat
+			PF           Stat
+			PA           Stat
+		}{
+			Wins:   win,
+			Losses: loss,
+
+			TotalOffense: off,
+			TotalDefense: def,
+
+			PA: getPointsScored(opp),
+			PF: getPointsScored(tm),
+		},
+	}
+	return ts, nil
+}
+
+func getTotalYards(tm GameTeam) (Stat, error) {
 	for _, s := range tm.Stats {
 		if s.Category == totalYardsStatKey {
 			stat, err := strconv.Atoi(s.Stat)
 			if err != nil {
 
 			}
-			ts.Total.TotalOffense = Stat{
+			return Stat{
 				Value: stat,
-			}
+			}, nil
 		}
 	}
+	return Stat{}, errors.New("total offense not found")
+}
 
-	//DEF
-	for _, s := range opp.Stats {
-		if s.Category == totalYardsStatKey {
-			stat, err := strconv.Atoi(s.Stat)
-			if err != nil {
-
-			}
-			ts.Total.TotalDefense = Stat{
-				Value: stat,
-			}
-		}
-	}
-
-	//PA
-	ts.Total.PA = Stat{
-		Value: int(opp.Points),
-	}
-
-	//PF
-	ts.Total.PF = Stat{
+func getPointsScored(tm GameTeam) Stat {
+	return Stat{
 		Value: int(tm.Points),
 	}
+}
 
-	//W/L
+func getWinLoss(tm GameTeam, opp GameTeam) (winStat Stat, lossStat Stat) {
 	if tm.Points > opp.Points {
-		ts.Total.Wins = Stat{
+		winStat = Stat{
 			Value: 1,
 		}
 	} else {
-		ts.Total.Losses = Stat{
+		lossStat = Stat{
 			Value: 1,
 		}
 	}
-
-	return ts, nil
+	return winStat, lossStat
 }

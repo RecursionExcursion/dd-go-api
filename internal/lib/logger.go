@@ -57,8 +57,10 @@ func LogFn(fn func(), lvl int) {
 var getLogLevel = initEnvLogLevel()
 
 func initEnvLogLevel() func() int {
-	logLvl, err := strconv.Atoi(EnvGetOrPanic("LOG_LEVEL"))
+
+	logLvl, err := strconv.Atoi(EnvGetOrFallback("LOG_LEVEL", "-1"))
 	if err != nil {
+
 		panic("could not convert log level secret to int")
 	}
 	return func() int {

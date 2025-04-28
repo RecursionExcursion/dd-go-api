@@ -1,21 +1,38 @@
-package cfbr
+package core
 
 import (
 	"errors"
 	"fmt"
 )
 
-/* Compiled School */
-
 type CompleteGame struct {
-	Id        uint
+	Id        int
 	Game      Game
 	GameStats GameStats
 }
 
+func (cg *CompleteGame) getTeam(id int) (currTeam GameTeam, oppTeam GameTeam, err error) {
+
+	oppAssignedFlag := false
+
+	for _, t := range cg.GameStats.Teams {
+		if t.SchoolId == id {
+			currTeam = t
+		} else {
+			if oppAssignedFlag == true {
+				err = fmt.Errorf("Team %v not found", id)
+			}
+			oppTeam = t
+			oppAssignedFlag = true
+		}
+	}
+
+	return currTeam, oppTeam, err
+}
+
 type CFBRSchool struct {
 	Team  Team
-	Games []uint
+	Games []int
 }
 
 /* CFBRSeason- This is the main data structure for this module
@@ -46,7 +63,7 @@ func EmptySeason() CFBRSeason {
 }
 
 // First accept args (stat weights)/(year)
-func Create(divsion string, year uint) (CFBRSeason, error) {
+func Create(divsion string, year int) (CFBRSeason, error) {
 	season, err := collectCfbSeasonData(divsion, year)
 	if err != nil {
 		return CFBRSeason{}, err
@@ -56,7 +73,7 @@ func Create(divsion string, year uint) (CFBRSeason, error) {
 
 /* CFBRSeason- Util fns */
 
-func (c *CFBRSeason) FindSchoolById(id uint) (s CFBRSchool, err error) {
+func (c *CFBRSeason) FindSchoolById(id int) (s CFBRSchool, err error) {
 	s, ok := c.Schools[fmt.Sprint(id)]
 	if !ok {
 		err = errors.New("school not found")
@@ -64,7 +81,7 @@ func (c *CFBRSeason) FindSchoolById(id uint) (s CFBRSchool, err error) {
 	return s, err
 }
 
-func (c *CFBRSeason) FindGameById(id uint) (cg CompleteGame, err error) {
+func (c *CFBRSeason) FindGameById(id int) (cg CompleteGame, err error) {
 	cg, ok := c.Games[fmt.Sprint(id)]
 	if !ok {
 		err = errors.New("game not found")

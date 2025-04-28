@@ -1,4 +1,4 @@
-package cfbr
+package core
 
 import (
 	"fmt"
@@ -9,18 +9,18 @@ import (
 )
 
 type cfbrRoutes = struct {
-	teams func(year uint) string
-	games func(division string, year uint, seasonType string) string
-	stats func(year uint, week uint, seasonType string) string
+	teams func(year int) string
+	games func(division string, year int, seasonType string) string
+	stats func(year int, week int, seasonType string) string
 }
 
 func routeBuilder() cfbrRoutes {
 	return cfbrRoutes{
-		teams: func(year uint) string {
+		teams: func(year int) string {
 			return fmt.Sprintf("%v%v?year=%v", baseRoute, teams, year)
 		},
 
-		games: func(division string, year uint, seasonType string) string {
+		games: func(division string, year int, seasonType string) string {
 			return fmt.Sprintf("%v%v?year=%v&division=%v&seasonType=%v",
 				baseRoute,
 				games,
@@ -29,7 +29,7 @@ func routeBuilder() cfbrRoutes {
 				seasonType)
 		},
 
-		stats: func(year, week uint, seasonType string) string {
+		stats: func(year, week int, seasonType string) string {
 			return fmt.Sprintf("%v%v?year=%v&week=%v&seasonType=%v",
 				baseRoute,
 				stats,
@@ -40,17 +40,17 @@ func routeBuilder() cfbrRoutes {
 	}
 }
 
-func fetchTeams(year uint) ([]Team, error) {
+func fetchTeams(year int) ([]Team, error) {
 	r := routeBuilder().teams(year)
 	return fetchDataToT[[]Team](r)
 }
 
-func fetchGames(division string, year uint, seasonType string) ([]Game, error) {
+func fetchGames(division string, year int, seasonType string) ([]Game, error) {
 	r := routeBuilder().games(division, year, seasonType)
 	return fetchDataToT[[]Game](r)
 }
 
-func fetchGameStats(year uint, week uint, seasonType string) ([]GameStats, error) {
+func fetchGameStats(year int, week int, seasonType string) ([]GameStats, error) {
 	r := routeBuilder().stats(year, week, seasonType)
 	return fetchDataToT[[]GameStats](r)
 }

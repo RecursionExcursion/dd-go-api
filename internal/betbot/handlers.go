@@ -1,4 +1,4 @@
-package app
+package betbot
 
 import (
 	"io"
@@ -9,11 +9,66 @@ import (
 	"time"
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
-	"github.com/recursionexcursion/dd-go-api/internal/betbot"
+	"github.com/recursionexcursion/dd-go-api/internal/betbot/core"
+
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
-var fsdStringCompressor = lib.GzipCompressor[betbot.FirstShotData](
+func BetbotRoutes(mwChains struct {
+	JwtChain []api.Middleware
+	KeyChain []api.Middleware
+}) []api.RouteHandler {
+
+	bbBase := api.RestMethodGenerator("/betbot")
+
+	var getBetBotRoute = api.RouteHandler{
+		MethodAndPath: bbBase().GET,
+		Handler:       handleBBGet,
+		Middleware:    mwChains.JwtChain,
+	}
+
+	var revalidateBetBotRoute = api.RouteHandler{
+		MethodAndPath: bbBase().POST,
+		Handler:       handleGetBBRevalidation,
+		Middleware:    mwChains.JwtChain,
+	}
+	var pollBetBotRoute = api.RouteHandler{
+		MethodAndPath: bbBase("poll").GET,
+		Handler:       handleRevalidationPolling,
+		Middleware:    mwChains.JwtChain,
+	}
+
+	var bbRevalidateAndZip = api.RouteHandler{
+		MethodAndPath: bbBase("zip").GET,
+		Handler:       handleBBValidateAndZip,
+		Middleware:    mwChains.JwtChain,
+	}
+
+	var loginBBUserRoute = api.RouteHandler{
+		MethodAndPath: bbBase("user", "login").POST,
+		Handler:       handleUserLogin,
+		Middleware:    mwChains.KeyChain,
+	}
+
+	var bbPing = api.RouteHandler{
+		MethodAndPath: bbBase("ping").GET,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			api.Response.Ok(w)
+		},
+		Middleware: mwChains.KeyChain,
+	}
+
+	return []api.RouteHandler{
+		getBetBotRoute,
+		revalidateBetBotRoute,
+		loginBBUserRoute,
+		bbRevalidateAndZip,
+		bbPing,
+		pollBetBotRoute,
+	}
+}
+
+var fsdStringCompressor = lib.GzipCompressor[core.FirstShotData](
 	lib.Codec[string]{
 		Encode: func(b []byte) (string, error) {
 			return lib.BytesToBase64(b), nil
@@ -24,13 +79,13 @@ var fsdStringCompressor = lib.GzipCompressor[betbot.FirstShotData](
 	},
 )
 
-var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var handleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	_, dataRepo := BetBotRepository()
 
 	timer := lib.StartTimer()
 
 	lib.Log("Querying DB for betbot data", 5)
-	compressedData, err := dataRepo.FindTById(dataId)
+	compressedData, err := dataRepo.FindTById(core.BetBotDataId)
 	if err != nil {
 		log.Println(err)
 		api.Response.ServerError(w, "")
@@ -45,7 +100,7 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lib.Log("Compiling stats", 5)
-	packagedData, err := betbot.NewStatCalculator(decompressedDbData).CalculateAndPackage()
+	packagedData, err := core.NewStatCalculator(decompressedDbData).CalculateAndPackage()
 	if err != nil {
 		lib.LogError("", err)
 		api.Response.ServerError(w)
@@ -57,7 +112,7 @@ var HandleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	api.Response.Gzip(w, 200,
 		struct {
 			Meta int64
-			Data []betbot.PackagedPlayer
+			Data []core.PackagedPlayer
 		}{
 			Meta: decompressedDbData.Created,
 			Data: packagedData,
@@ -74,7 +129,7 @@ var handleRevalidationPolling api.HandlerFn = func(w http.ResponseWriter, r *htt
 	api.Response.Ok(w, isWorking.Load())
 }
 
-var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var handleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	if isWorking.Load() {
 		api.Response.Ok(w, "Revalidation in progress")
 		return
@@ -92,7 +147,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 		//collect data
 		lib.Log("Collecting Data", 5)
-		fsd, err := betbot.CollectData()
+		fsd, err := core.CollectData()
 		if err != nil {
 			log.Printf("Error while collecting data: %v", err)
 			return
@@ -105,8 +160,8 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 			log.Printf("Error while compressing data: %v", err)
 			return
 		}
-		compressed := betbot.CompressedFsData{
-			Id:      dataId,
+		compressed := core.CompressedFsData{
+			Id:      core.BetBotDataId,
 			Created: fsd.Created,
 			Data:    compressedData,
 		}
@@ -115,7 +170,7 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 		//Wipe old data
 		lib.Log("Wiping stale Data", 5)
-		ok, err := dataRepo.DeleteById(dataId)
+		ok, err := dataRepo.DeleteById(core.BetBotDataId)
 		if err != nil || !ok {
 			log.Println("Error while wiping data")
 			lib.Log(err.Error(), -1)
@@ -137,18 +192,18 @@ var HandleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 }
 
 /* Collect, Compute, Send (No state is saved) */
-var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
+var handleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	//collect data
-	fsd, err := betbot.CollectData()
+	fsd, err := core.CollectData()
 	if err != nil {
 		api.Response.ServerError(w)
 		return
 	}
 
-	betbot.FindGameInFsd(fsd, strconv.Itoa(401705613))
+	core.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	// Compile stats
-	packagedData, err := betbot.NewStatCalculator(fsd).CalculateAndPackage()
+	packagedData, err := core.NewStatCalculator(fsd).CalculateAndPackage()
 	if err != nil {
 		lib.LogError("", err)
 		api.Response.ServerError(w)
@@ -160,7 +215,7 @@ var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	api.Response.Gzip(w, 200,
 		struct {
 			Meta string
-			Data []betbot.PackagedPlayer
+			Data []core.PackagedPlayer
 		}{
 			Meta: strconv.FormatInt(time.Now().UnixMilli(), 10),
 			Data: packagedData,
@@ -170,7 +225,7 @@ var HandleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO impl pw hashing
-var HandleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	type LoginPayload struct {
 		Username string

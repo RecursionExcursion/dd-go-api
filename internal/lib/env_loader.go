@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -9,9 +10,21 @@ import (
 
 var envLoaded bool = false
 
-/* EnvGetOrPanic loads EnvVars if not already loaded,
- * then retrieves the var or panics if not set
- */
+func EnvGet(key string) (string, error) {
+	if !envLoaded {
+		if err := EnvLoader(); err != nil {
+			return "", err
+		}
+	}
+
+	val := os.Getenv(key)
+	if val == "" {
+		return "", fmt.Errorf("env key %v not set", key)
+	}
+	return val, nil
+}
+
+/* EnvGetOrPanic loads EnvVars if not already loaded, then retrieves the var or panics if not set */
 func EnvGetOrPanic(key string) string {
 	if !envLoaded {
 		if err := EnvLoader(); err != nil {

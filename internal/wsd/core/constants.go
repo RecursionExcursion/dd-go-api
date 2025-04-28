@@ -1,4 +1,4 @@
-package wsd
+package core
 
 /* Supported os and arch */
 

@@ -1,4 +1,4 @@
-package betbot
+package core
 
 import "strings"
 

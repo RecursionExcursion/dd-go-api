@@ -12,7 +12,15 @@ import (
 
 //TODO decouple other lib packages like EnvGetorPanic and LogError
 
-var atlasUri = EnvGetOrPanic("ATLAS_URI")
+var atlasUri = func() string {
+	uri, err := EnvGet("ATLAS_URI")
+	if err != nil {
+		if !isRunningTest() {
+			panic(err)
+		}
+	}
+	return uri
+}()
 
 type MongoConnection[T any] struct {
 	Db         string

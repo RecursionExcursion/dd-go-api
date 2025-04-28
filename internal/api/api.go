@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -22,6 +23,7 @@ type RouteHandler struct {
 	Middleware    []Middleware
 }
 
+// addr = :PORT
 func NewApiServer(addr string) *APIServer {
 	return &APIServer{
 		Addr:       addr,
@@ -72,5 +74,48 @@ func pipeMiddleware(mws ...Middleware) Middleware {
 			final = mws[i](final)
 		}
 		return final
+	}
+}
+
+type HTTPMethods struct {
+	GET    string
+	POST   string
+	PUT    string
+	PATCH  string
+	DELETE string
+}
+
+func RestMethodGenerator(base string) func(path ...string) HTTPMethods {
+	return func(paths ...string) HTTPMethods {
+
+		pathStr := ""
+
+		numArgs := len(paths)
+
+		if numArgs != 0 {
+			if numArgs == 1 {
+				pathStr = "/" + paths[0]
+			} else {
+				for _, arg := range paths {
+					pathStr += "/" + arg
+				}
+			}
+		}
+
+		route := base + pathStr
+
+		assign := func(s string) string {
+			return fmt.Sprintf("%v %v", s, route)
+		}
+
+		routes := HTTPMethods{
+			GET:    assign("GET"),
+			POST:   assign("POST"),
+			PUT:    assign("PUT"),
+			PATCH:  assign("PATCH"),
+			DELETE: assign("DELETE"),
+		}
+
+		return routes
 	}
 }

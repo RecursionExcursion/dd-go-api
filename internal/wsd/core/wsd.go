@@ -1,4 +1,4 @@
-package wsd
+package core
 
 import (
 	"fmt"

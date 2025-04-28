@@ -1,11 +1,11 @@
-package cfbr
+package core
 
 import (
 	"fmt"
 	"log"
 )
 
-func collectCfbSeasonData(division string, year uint) (CFBRSeason, error) {
+func collectCfbSeasonData(division string, year int) (CFBRSeason, error) {
 	teams, games, stats, err := collectDataPoints(year, division)
 	if err != nil {
 		return EmptySeason(), err
@@ -53,7 +53,7 @@ func collectCfbSeasonData(division string, year uint) (CFBRSeason, error) {
 	return sea, nil
 }
 
-func collectDataPoints(year uint, division string) (teams []Team, games []Game, stats []GameStats, err error) {
+func collectDataPoints(year int, division string) (teams []Team, games []Game, stats []GameStats, err error) {
 
 	tChan := make(chan []Team)
 	gChan := make(chan []Game)
@@ -86,7 +86,7 @@ func collectDataPoints(year uint, division string) (teams []Team, games []Game, 
 	games = <-gChan
 
 	/* Team Ids (will be filtered down to div here) */
-	tIds := []uint{}
+	tIds := []int{}
 	for _, t := range teams {
 		tIds = append(tIds, t.Id)
 	}
@@ -99,7 +99,7 @@ func collectDataPoints(year uint, division string) (teams []Team, games []Game, 
 	return
 }
 
-func collectTeams(year uint, division string) ([]Team, error) {
+func collectTeams(year int, division string) ([]Team, error) {
 	allTeams, err := fetchTeams(year)
 	if err != nil {
 		return nil, err
@@ -117,7 +117,7 @@ func collectTeams(year uint, division string) ([]Team, error) {
 	return divisionTeams, nil
 }
 
-func collectGames(year uint, division string) ([]Game, error) {
+func collectGames(year int, division string) ([]Game, error) {
 
 	gChan := make(chan []Game)
 	tasks := []func(){
@@ -157,7 +157,7 @@ func collectGames(year uint, division string) ([]Game, error) {
 	return games, nil
 }
 
-func collectGameStats(year uint, games []Game, teamIds []uint) ([]GameStats, error) {
+func collectGameStats(year int, games []Game, teamIds []int) ([]GameStats, error) {
 	allGameStats := []GameStats{}
 
 	gsChan := make(chan []GameStats)
@@ -166,7 +166,7 @@ func collectGameStats(year uint, games []Game, teamIds []uint) ([]GameStats, err
 	//Calc max week for reg season
 	maxWeek := 0
 	for _, g := range games {
-		if g.Completed && g.SeasonType == regularSeason && g.Week > uint(maxWeek) {
+		if g.Completed && g.SeasonType == regularSeason && g.Week > maxWeek {
 			maxWeek = int(g.Week)
 		}
 	}
@@ -175,7 +175,7 @@ func collectGameStats(year uint, games []Game, teamIds []uint) ([]GameStats, err
 	for i := 0; i <= maxWeek; i++ {
 
 		tasks = append(tasks, func() {
-			gs, err := fetchGameStats(year, uint(i), "regular")
+			gs, err := fetchGameStats(year, i, "regular")
 			if err != nil {
 				log.Println(err)
 				gsChan <- []GameStats{}
@@ -231,7 +231,7 @@ func createCfbrTeams(teams []Team, completeGames GameMap) (SchoolMap, error) {
 	for _, t := range teams {
 		schools[fmt.Sprint(t.Id)] = CFBRSchool{
 			Team:  t,
-			Games: []uint{},
+			Games: []int{},
 		}
 	}
 

@@ -1,9 +1,9 @@
-package cfbr
+package core
 
 /* Data Retrieval types */
 
 type Team struct {
-	Id             uint     `json:"id"`
+	Id             int      `json:"id"`
 	School         string   `json:"school"`
 	Mascot         string   `json:"mascot"`
 	Abbreviation   string   `json:"abbreviation"`
@@ -15,29 +15,31 @@ type Team struct {
 }
 
 type Game struct {
-	Id         uint   `json:"id"`
-	Season     uint   `json:"season"`
-	Week       uint   `json:"week"`
+	Id         int    `json:"id"`
+	Season     int    `json:"season"`
+	Week       int    `json:"week"`
 	SeasonType string `json:"season_type"`
 	StartDate  string `json:"start_date"`
 	Completed  bool   `json:"completed"`
-	HomeId     uint   `json:"home_id"`
-	HomePoints uint   `json:"home_points"`
-	AwayId     uint   `json:"away_id"`
-	AwayPoints uint   `json:"away_points"`
+	HomeId     int    `json:"home_id"`
+	HomePoints int    `json:"home_points"`
+	AwayId     int    `json:"away_id"`
+	AwayPoints int    `json:"away_points"`
 }
 
 type GameStats struct {
-	Id    uint       `json:"id"`
+	Id    int        `json:"id"`
 	Teams []GameTeam `json:"teams"`
 }
 
 type GameTeam struct {
-	SchoolId uint   `json:"schoolId"`
-	HomeAway string `json:"homeAway"`
-	Points   uint   `json:"points"`
-	Stats    []struct {
-		Category string `json:"category"`
-		Stat     string `json:"stat"`
-	} `json:"stats"`
+	SchoolId int             `json:"schoolId"`
+	HomeAway string          `json:"homeAway"`
+	Points   int             `json:"points"`
+	Stats    []GameTeamStats `json:"stats"`
+}
+
+type GameTeamStats struct {
+	Category string `json:"category"`
+	Stat     string `json:"stat"`
 }

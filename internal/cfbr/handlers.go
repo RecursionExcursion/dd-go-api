@@ -1,4 +1,4 @@
-package app
+package cfbr
 
 import (
 	"fmt"
@@ -9,10 +9,24 @@ import (
 
 	"github.com/andybalholm/brotli"
 	"github.com/recursionexcursion/dd-go-api/internal/api"
-	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
+	"github.com/recursionexcursion/dd-go-api/internal/cfbr/core"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 	"go.mongodb.org/mongo-driver/bson"
 )
+
+func CfbrRoutes(mwChain []api.Middleware) []api.RouteHandler {
+
+	var getCfbrRoute = api.RouteHandler{
+		MethodAndPath: "GET /cfbr",
+		Handler:       HandleCfbrGet,
+		Middleware:    mwChain,
+	}
+
+	return []api.RouteHandler{
+		getCfbrRoute,
+	}
+
+}
 
 // var gzipCompressor = lib.GzipCompressor[cfbr.CFBRSeason](
 // 	lib.Codec[string]{
@@ -26,7 +40,7 @@ import (
 // )
 
 // TODO decide which compression best fits
-var brotCompressor = lib.CustomCompressor[cfbr.CFBRSeason](
+var brotCompressor = lib.CustomCompressor[core.CFBRSeason](
 	lib.Algorithms{
 		Writer: func(w io.Writer) (io.WriteCloser, error) {
 			return brotli.NewWriterLevel(w, 11), nil
@@ -45,14 +59,14 @@ var brotCompressor = lib.CustomCompressor[cfbr.CFBRSeason](
 	},
 )
 
-func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
+func HandleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 	//TODO placeholders
 	//TODO sanitize inputs year < now.year, div must be valid, etc
 	div := "fbs"
 	yr := 2024
 
-	szn, err := func() (cfbr.CFBRSeason, error) {
+	szn, err := func() (core.CFBRSeason, error) {
 		cfbrRepo := CfbrRepository()
 		queryId := createQueryId(yr, div)
 
@@ -61,9 +75,9 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 			log.Println("Season not found creating new")
 
-			szn, err := cfbr.Create(div, uint(yr))
+			szn, err := core.Create(div, yr)
 			if err != nil {
-				return cfbr.CFBRSeason{}, err
+				return core.CFBRSeason{}, err
 			}
 
 			/* TODO
@@ -71,10 +85,10 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 			 */
 			compressedSeason, err := brotCompressor.Compress(szn)
 			if err != nil {
-				return cfbr.CFBRSeason{}, err
+				return core.CFBRSeason{}, err
 			}
 
-			scs := cfbr.SerializeableCompressedSeason{
+			scs := core.SerializeableCompressedSeason{
 				Id:               createQueryId(szn.Year, szn.Division),
 				Year:             szn.Year,
 				CreatedAt:        int(time.Now().UnixMilli()),
@@ -90,7 +104,7 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 			log.Println("Season found decompressing")
 			szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
 			if err != nil {
-				return cfbr.CFBRSeason{}, err
+				return core.CFBRSeason{}, err
 			}
 			return szn, nil
 		}
@@ -101,7 +115,7 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Season %v %v created with %v schools and %v games\n", szn.Year, szn.Division, len(szn.Schools), len(szn.Games))
 	//TODO compute weights
-	_, err = cfbr.ComputeSeason(szn)
+	_, err = core.ComputeSeason(szn)
 	if err != nil {
 		panic(err)
 	}

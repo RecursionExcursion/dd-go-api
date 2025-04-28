@@ -1,4 +1,4 @@
-package cfbr
+package core
 
 import "github.com/recursionexcursion/dd-go-api/internal/lib"
 

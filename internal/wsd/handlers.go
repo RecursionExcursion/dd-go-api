@@ -1,4 +1,4 @@
-package app
+package wsd
 
 import (
 	"io"
@@ -6,8 +6,42 @@ import (
 
 	"github.com/recursionexcursion/dd-go-api/internal/api"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
-	"github.com/recursionexcursion/dd-go-api/internal/wsd"
+	"github.com/recursionexcursion/dd-go-api/internal/wsd/core"
 )
+
+func WsdRoutes(mwChain []api.Middleware) []api.RouteHandler {
+	var postWsdHome = api.RouteHandler{
+		MethodAndPath: "POST /wsd/build",
+		Handler:       postWsdBuildHandler,
+		Middleware:    mwChain,
+	}
+
+	getSupportedOs := api.RouteHandler{
+		MethodAndPath: "GET /wsd/os",
+		Handler:       getSupportedOsHandler,
+		Middleware:    mwChain,
+	}
+
+	routes := api.RouteHandler{
+		MethodAndPath: "GET /wsd/routes",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+
+			routeMap := map[string]string{
+				"getOs":     "/wsd/os",
+				"postBuild": "/wsd/build",
+			}
+
+			api.Response.Ok(w, routeMap)
+		},
+		Middleware: mwChain,
+	}
+
+	return []api.RouteHandler{
+		postWsdHome,
+		getSupportedOs,
+		routes,
+	}
+}
 
 var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -18,7 +52,7 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	params, err := lib.Map[wsd.CreateExeParams](bodyBytes)
+	params, err := lib.Map[core.CreateExeParams](bodyBytes)
 	if err != nil {
 		api.Response.ServerError(w, "Failed to map body")
 		return
@@ -35,7 +69,7 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	binPath, name, err := wsd.CreateGoExe(params)
+	binPath, name, err := core.CreateGoExe(params)
 	if err != nil {
 		panic(err)
 	}
@@ -45,7 +79,7 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 
 var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
-	testParams := wsd.CreateExeParams{
+	testParams := core.CreateExeParams{
 		Arch: "win",
 		Commands: []string{
 			"url:www.facebook.com",
@@ -54,7 +88,7 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 		},
 	}
 
-	bin, name, err := wsd.CreateGoExe(testParams)
+	bin, name, err := core.CreateGoExe(testParams)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +98,7 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	keys := []string{}
-	for k := range wsd.SupportedArchitecture {
+	for k := range core.SupportedArchitecture {
 		keys = append(keys, k)
 	}
 
