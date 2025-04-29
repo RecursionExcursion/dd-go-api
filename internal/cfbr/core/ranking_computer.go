@@ -56,6 +56,17 @@ type ComputedSeason struct {
 }
 
 func ComputeSeason(s CFBRSeason) (ComputedSeason, error) {
+	cs, err := createWeeks(s)
+	if err != nil {
+		return ComputedSeason{}, err
+	}
+
+	//here the cs should be full of each weeks stats
+
+	return cs, nil
+}
+
+func createWeeks(s CFBRSeason) (ComputedSeason, error) {
 	lw := FindLastWeek(s)
 
 	cs := ComputedSeason{
@@ -66,7 +77,7 @@ func ComputeSeason(s CFBRSeason) (ComputedSeason, error) {
 
 	for i := range lw {
 		currWeek := i + 1
-		weekTeams := make([]WeeklyTeam, len(s.Schools))
+		weekTeams := []WeeklyTeam{}
 
 		for _, t := range s.Schools {
 			wt := WeeklyTeam{
@@ -100,7 +111,7 @@ func ComputeSeason(s CFBRSeason) (ComputedSeason, error) {
 
 			weekTeams = append(weekTeams, wt)
 		}
-		cs.RegularSeasonWeeks = append(cs.RegularSeasonWeeks, weekTeams)
+		cs.RegularSeasonWeeks[i] = weekTeams
 	}
 
 	return cs, nil
