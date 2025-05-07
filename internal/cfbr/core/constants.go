@@ -34,3 +34,39 @@ var trackedStatCategories = []string{
 }
 
 var totalYardsStatKey = "totalYards"
+
+/* ESPN Routes */
+const espnBase = "https://site.api.espn.com/apis/site/v2/sports/football/college-football"
+const espnGroups = "/groups"
+const espnSeason = "/scoreboard" //dates=2024 or dates=20240921
+const espnTeams = "/teams"       //</teamid>
+const espnGame = "/summary"      //?event=<eventId>
+
+/* Group Keys */
+type GroupName = struct {
+	name     string
+	children []string
+}
+
+var D1 = GroupName{
+	name: "NCAA Division I",
+	children: []string{
+		"FBS (I-A)",
+		"FCS (I-AA)",
+	},
+}
+
+var D2_3 = GroupName{
+	name: "Division II/III",
+	children: []string{
+		"NCAA Division II",
+		"NCAA Division III",
+	},
+}
+
+/* TODO: DELETE place holder for flow
+ * Groups (Teams) -> Season (Games) -> Games
+ * The actual teams endpoint may be  moot but we will see what we need from it.
+ *
+ *
+ */

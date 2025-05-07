@@ -64,11 +64,12 @@ func EmptySeason() CFBRSeason {
 
 // First accept args (stat weights)/(year)
 func Create(divsion string, year int) (CFBRSeason, error) {
-	season, err := collectCfbSeasonData(divsion, year)
-	if err != nil {
-		return CFBRSeason{}, err
-	}
-	return season, nil
+	// season, err := collectCfbSeasonData(divsion, year)
+	// if err != nil {
+	// 	return CFBRSeason{}, err
+	// }
+	// return season, nil
+	return CFBRSeason{}, nil
 }
 
 /* CFBRSeason- Util fns */

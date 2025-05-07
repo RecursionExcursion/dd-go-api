@@ -115,14 +115,14 @@ func HandleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Printf("Season %v %v created with %v schools and %v games\n", szn.Year, szn.Division, len(szn.Schools), len(szn.Games))
 	//TODO compute weights
-	cs, err := core.ComputeSeason(szn)
-	if err != nil {
-		panic(err)
-	}
+	// cs, err := core.ComputeSeason(szn)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	log.Println("Computation complete")
 
-	api.Response.Ok(w, cs)
+	api.Response.Ok(w)
 }
 
 func createQueryId(year int, division string) string {

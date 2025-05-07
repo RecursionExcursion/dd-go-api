@@ -85,27 +85,28 @@ type TeamLogo struct {
 /* Season */
 
 type ESPNSeason struct {
-	Leagues []League `json:"leagues"`
+	Leagues []League      `json:"leagues"`
+	Events  []SeasonEvent `json:"events"`
 }
 
 type League struct {
-	Id           string     `json:"id"`
-	Uid          string     `json:"uid"`
-	Name         string     `json:"name"`
-	Abbreviation string     `json:"abbreviation"`
-	Slug         string     `json:"slug"`
-	Season       SeasonInfo `json:"season"`
+	Id           string           `json:"id"`
+	Uid          string           `json:"uid"`
+	Name         string           `json:"name"`
+	Abbreviation string           `json:"abbreviation"`
+	Slug         string           `json:"slug"`
+	Season       SeasonInfo       `json:"season"`
+	Calender     []SeasonCalendar `json:"calendar"`
 }
 
 type SeasonInfo struct {
-	Year        int              `json:"year"`
-	StartDate   string           `json:"startDate"`
-	EndDate     string           `json:"endDate"`
-	DisplayName string           `json:"DisplayName"`
-	Calender    []SeasonCalender `json:"calender"`
+	Year        int    `json:"year"`
+	StartDate   string `json:"startDate"`
+	EndDate     string `json:"endDate"`
+	DisplayName string `json:"DisplayName"`
 }
 
-type SeasonCalender struct {
+type SeasonCalendar struct {
 	Label     string          `json:"label"`
 	Value     string          `json:"value"`
 	StartDate string          `json:"startDate"`
@@ -114,26 +115,25 @@ type SeasonCalender struct {
 }
 
 type CalenderEntry struct {
-	Label     string         `json:"label"`
-	AltLabel  string         `json:"alternateLabel"`
-	Detail    string         `json:"detail"`
-	Value     string         `json:"value"`
-	StartDate string         `json:"startDate"`
-	EndDate   string         `json:"endDate"`
-	Events    []SeasonEvents `json:"events"`
+	Label     string `json:"label"`
+	AltLabel  string `json:"alternateLabel"`
+	Detail    string `json:"detail"`
+	Value     string `json:"value"`
+	StartDate string `json:"startDate"`
+	EndDate   string `json:"endDate"`
 }
 
-type SeasonEvents struct {
-	Id           string             `json:"id"`
-	Uid          string             `json:"uid"`
-	Date         string             `json:"date"`
-	Name         string             `json:"name"`
-	ShortName    string             `json:"shortName"`
-	Season       SeasonEventInfo    `json:"season"`
-	Week         SeasonEventWeek    `json:"week"`
-	Link         []SeasonEventLink  `json:"links"`
-	Competitions SeasonCompetitions `json:"competitions"`
-	Status       SeasonEventStatus  `json:"status"`
+type SeasonEvent struct {
+	Id           string              `json:"id"`
+	Uid          string              `json:"uid"`
+	Date         string              `json:"date"`
+	Name         string              `json:"name"`
+	ShortName    string              `json:"shortName"`
+	Season       SeasonEventInfo     `json:"season"`
+	Week         SeasonEventWeek     `json:"week"`
+	Link         []SeasonEventLink   `json:"links"`
+	Competitions []SeasonCompetition `json:"competitions"`
+	// Status       SeasonEventStatus   `json:"status"`
 }
 
 type SeasonEventInfo struct {
@@ -150,7 +150,7 @@ type SeasonEventLink struct {
 	ShortText string `json:"shortText"`
 }
 
-type SeasonCompetitions struct {
+type SeasonCompetition struct {
 	Id          string       `json:"id"`
 	Uid         string       `json:"uid"`
 	Date        string       `json:"date"`
@@ -196,7 +196,28 @@ type EventStatusType struct {
 	AltDetail   string `json:"altDetail"`
 }
 
-/* Team */
+/* Teams (All) */
+type ESPNTeams struct {
+	Sports []ESPNTeamsSport `json:"sports"`
+}
+
+type ESPNTeamsSport struct {
+	Id      string                   `json:"id"`
+	Leagues []ESPNTeamsSportsLeagues `json:"leagues"`
+}
+
+type ESPNTeamsSportsLeagues struct {
+	Id    string                      `json:"id"`
+	Teams []ESPNTeamsSportsLeagueTeam `json:"teams"`
+}
+
+type ESPNTeamsSportsLeagueTeam struct {
+	Team struct {
+		Id string `json:"id"`
+	} `json:"team"`
+}
+
+/* Team (Individual against teamId) */
 type ESPNCfbTeam struct {
 	Id               string      `json:"id"`
 	Uid              string      `json:"uid"`

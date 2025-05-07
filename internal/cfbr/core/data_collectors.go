@@ -1,263 +1,180 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"time"
+
+	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
-func collectCfbSeasonData(division string, year int) (CFBRSeason, error) {
-	teams, games, stats, err := collectDataPoints(year, division)
-	if err != nil {
-		return EmptySeason(), err
-	}
+const espnSeasonDateFormat = "2006-01-02T15:04Z"
+const espnQueryDateFormat = "20060102"
 
-	if len(teams) == 0 || len(games) == 0 || len(stats) == 0 {
-		return EmptySeason(), fmt.Errorf("season %v %v not found", division, year)
-	}
-
-	cgMap := make(map[string]CompleteGame)
-
-	for _, g := range games {
-		gId := g.Id
-		paired := false
-
-		for _, gs := range stats {
-			if gs.Id == gId {
-				cgMap[fmt.Sprint(gId)] = CompleteGame{
-					Id:        gId,
-					Game:      g,
-					GameStats: gs,
-				}
-				paired = true
-				break
-			}
-		}
-
-		if !paired {
-			log.Printf("Game %v not paired", gId)
-		}
-
-	}
-
-	schools, err := createCfbrTeams(teams, cgMap)
-	if err != nil {
-		return EmptySeason(), err
-	}
-
-	sea := CFBRSeason{
-		Year:     int(year),
-		Division: division,
-		Schools:  schools,
-		Games:    cgMap,
-	}
-	return sea, nil
+type SeasonOccurences struct {
+	GamesPlayed int
+	Schedule    []CollectedGame
 }
 
-func collectDataPoints(year int, division string) (teams []Team, games []Game, stats []GameStats, err error) {
+type CollectedGame struct {
+	GameId string
+	OppId  string
+}
+type TeamCollector map[string]*SeasonOccurences
 
-	tChan := make(chan []Team)
-	gChan := make(chan []Game)
-	tasks := []func(){
-		func() {
-			teams, err = collectTeams(year, division)
-			if err != nil {
-				log.Println(err)
-				tChan <- []Team{}
-				return
-			}
-			tChan <- teams
-		},
-		func() {
-			games, err = collectGames(year, division)
-			if err != nil {
-				log.Println(err)
-				gChan <- []Game{}
-				return
-			}
-			gChan <- games
-		},
+func (tc TeamCollector) Add(c Competitor, opp Competitor, match SeasonCompetition) {
+	so, exists := tc[c.Id]
+
+	cg := CollectedGame{
+		GameId: match.Id,
+		OppId:  opp.Id,
 	}
 
-	go func() {
-		BatchRunner(tasks)
-	}()
+	if exists {
+		so.GamesPlayed++
+		so.Schedule = append(so.Schedule, cg)
+	} else {
+		tc[c.Id] = &SeasonOccurences{
+			GamesPlayed: 1,
+			Schedule:    []CollectedGame{cg},
+		}
+	}
+}
 
-	teams = <-tChan
-	games = <-gChan
+func (tc TeamCollector) FilterFbsTeams() {
+	toDelete := []string{}
 
-	/* Team Ids (will be filtered down to div here) */
-	tIds := []int{}
-	for _, t := range teams {
-		tIds = append(tIds, t.Id)
+	for k, v := range tc {
+		// most fbs teams play 12+ games, 10 gives it a nice buffer (134 teams in 2024)
+		if v.GamesPlayed < 10 {
+			toDelete = append(toDelete, k)
+		}
 	}
 
-	stats, err = collectGameStats(year, games, tIds)
+	for _, id := range toDelete {
+		delete(tc, id)
+	}
+
+	/* At this point *most teams will be filtered but.....
+	* the geniuses over at ESPN include future fbs addtions
+	* so we need to cross ref the scheduled and ensure the majority of games
+	* are not paycheck games (fbs vs fcs)
+	 */
+
+	toDelete = []string{}
+	for k, v := range tc {
+		fbsGames := 0
+		for _, g := range v.Schedule {
+			_, exists := tc[g.OppId]
+			if exists {
+				fbsGames++
+			}
+		}
+		fbsRatio := float32(fbsGames) / float32(v.GamesPlayed)
+
+		// 50% games are played against fbs teams, this number is negotiable
+		if fbsRatio < .5 {
+			toDelete = append(toDelete, k)
+		}
+
+	}
+
+	for _, id := range toDelete {
+		delete(tc, id)
+	}
+}
+
+func CompileSeason(year int) {
+	s, err := getZeroDay(year)
 	if err != nil {
-		return
+		//TODO
+		panic(err)
 	}
 
-	return
-}
-
-func collectTeams(year int, division string) ([]Team, error) {
-	allTeams, err := fetchTeams(year)
+	startDate, endDate, err := getSeasonDateRanges(s)
 	if err != nil {
-		return nil, err
+		//TODO
+		panic(err)
 	}
 
-	/* Filter by division */
-	divisionTeams := []Team{}
-
-	for _, t := range allTeams {
-		if t.Classification == division {
-			divisionTeams = append(divisionTeams, t)
-		}
+	collector, err := collectSeason(startDate, endDate)
+	if err != nil {
+		//TODO
+		panic(err)
 	}
 
-	return divisionTeams, nil
+	// lib.PrettyLog(collector)
+	collector.FilterFbsTeams()
+	lib.PrettyLog(len(collector))
+	lib.PrettyLog(collector["130"])
+
 }
 
-func collectGames(year int, division string) ([]Game, error) {
-
-	gChan := make(chan []Game)
-	tasks := []func(){
-		func() {
-			gReg, err := fetchGames(division, year, "regular")
-			if err != nil {
-				gChan <- []Game{}
-				return
-			}
-			gChan <- gReg
-		},
-		func() {
-			gPost, err := fetchGames(division, year, "postseason")
-			if err != nil {
-				gChan <- []Game{}
-				return
-			}
-			gChan <- gPost
-		},
+func getZeroDay(year int) (ESPNSeason, error) {
+	//0 day query 08/01
+	query := fmt.Sprintf("%v0801", year)
+	s, err := fetchEspnSeason(query)
+	if err != nil {
+		return ESPNSeason{}, err
 	}
-
-	go func() {
-		BatchRunner(tasks)
-		close(gChan)
-	}()
-
-	games := []Game{}
-	for chGames := range gChan {
-
-		for _, g := range chGames {
-			if g.Completed {
-				games = append(games, g)
-			}
-		}
-	}
-
-	return games, nil
+	return s, nil
 }
 
-func collectGameStats(year int, games []Game, teamIds []int) ([]GameStats, error) {
-	allGameStats := []GameStats{}
+func getSeasonDateRanges(s ESPNSeason) (start time.Time, end time.Time, err error) {
+	//get regualr season dates
 
-	gsChan := make(chan []GameStats)
-	tasks := []func(){}
-
-	//Calc max week for reg season
-	maxWeek := 0
-	for _, g := range games {
-		if g.Completed && g.SeasonType == regularSeason && g.Week > maxWeek {
-			maxWeek = int(g.Week)
+	if len(s.Leagues) == 0 {
+		return time.Time{}, time.Time{}, errors.New("no leagues found")
+	}
+	for _, c := range s.Leagues[0].Calender {
+		if c.Label == "Regular Season" {
+			start, err = time.Parse(espnSeasonDateFormat, c.StartDate)
+			if err != nil {
+				return start, end, err
+			}
+			end, err = time.Parse(espnSeasonDateFormat, c.EndDate)
+			if err != nil {
+				return start, end, err
+			}
+		}
+		if c.Label == "Postseason" {
+			end, err = time.Parse(espnSeasonDateFormat, c.EndDate)
+			if err != nil {
+				return start, end, err
+			}
 		}
 	}
+	return start, end, nil
+}
 
-	// regular season
-	for i := 0; i <= maxWeek; i++ {
+func collectSeason(startDate time.Time, endDate time.Time) (tc TeamCollector, err error) {
+	currDate := startDate
 
-		tasks = append(tasks, func() {
-			gs, err := fetchGameStats(year, i, "regular")
-			if err != nil {
-				log.Println(err)
-				gsChan <- []GameStats{}
-				return
-			}
-			gsChan <- gs
-		})
-	}
-
-	//postseason
-	tasks = append(tasks, func() {
-
-		gs, err := fetchGameStats(year, 1, "postseason")
+	for {
+		//call api
+		res, err := fetchEspnSeason(currDate.Format(espnQueryDateFormat))
 		if err != nil {
-			log.Println(err)
-			gsChan <- []GameStats{}
-			return
+			return tc, err
 		}
-		gsChan <- gs
-	})
+		//proccess req into map
+		for _, e := range res.Events {
+			match := e.Competitions[0]
+			t1 := match.Competitors[0]
+			t2 := match.Competitors[1]
 
-	go func() {
-		BatchRunner(tasks)
-		close(gsChan)
-	}()
-
-	for gs := range gsChan {
-		allGameStats = append(allGameStats, gs...)
-	}
-
-	filteredGs := []GameStats{}
-
-	for _, st := range allGameStats {
-		t1 := st.Teams[0]
-		t2 := st.Teams[1]
-
-		for _, tId := range teamIds {
-			if tId == t1.SchoolId || tId == t2.SchoolId {
-				filteredGs = append(filteredGs, st)
-				break
-			}
+			tc.Add(t1, t2, match)
+			tc.Add(t2, t1, match)
 		}
+		log.Printf("Query for %v complete", currDate)
 
-	}
-
-	return filteredGs, nil
-}
-
-func createCfbrTeams(teams []Team, completeGames GameMap) (SchoolMap, error) {
-
-	schools := make(map[string]CFBRSchool)
-
-	for _, t := range teams {
-		schools[fmt.Sprint(t.Id)] = CFBRSchool{
-			Team:  t,
-			Games: []int{},
+		//inc date
+		currDate = currDate.Add(time.Hour * 24)
+		//exit
+		if currDate.After(endDate) {
+			break
 		}
 	}
 
-	for _, g := range completeGames {
-		game := g.Game
-		homeId := fmt.Sprint(game.HomeId)
-		awayId := fmt.Sprint(game.AwayId)
-
-		homeSchool, ok := schools[homeId]
-		if ok {
-			homeSchool.Games = append(homeSchool.Games,
-				g.Id,
-			)
-
-			schools[homeId] = homeSchool
-		}
-
-		awaySchool, ok := schools[awayId]
-		if ok {
-			awaySchool.Games = append(awaySchool.Games,
-				g.Id,
-			)
-			schools[awayId] = awaySchool
-		}
-
-	}
-
-	return schools, nil
+	return tc, nil
 }
