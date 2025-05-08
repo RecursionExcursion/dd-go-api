@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
@@ -11,6 +12,12 @@ import (
 
 const espnSeasonDateFormat = "2006-01-02T15:04Z"
 const espnQueryDateFormat = "20060102"
+
+type Season struct {
+	Year  int
+	Teams SeasonTeams
+	Games SeasonGames
+}
 
 type SeasonOccurences struct {
 	GamesPlayed int
@@ -21,9 +28,10 @@ type CollectedGame struct {
 	GameId string
 	OppId  string
 }
-type TeamCollector map[string]*SeasonOccurences
+type SeasonTeams map[string]*SeasonOccurences
+type SeasonGames map[string]ESPNCfbGame
 
-func (tc TeamCollector) Add(c Competitor, opp Competitor, match SeasonCompetition) {
+func (tc SeasonTeams) Add(c Competitor, opp Competitor, match SeasonCompetition) {
 	so, exists := tc[c.Id]
 
 	cg := CollectedGame{
@@ -42,7 +50,7 @@ func (tc TeamCollector) Add(c Competitor, opp Competitor, match SeasonCompetitio
 	}
 }
 
-func (tc TeamCollector) FilterFbsTeams() {
+func (tc SeasonTeams) FilterFbsTeams() {
 	toDelete := []string{}
 
 	for k, v := range tc {
@@ -85,7 +93,7 @@ func (tc TeamCollector) FilterFbsTeams() {
 	}
 }
 
-func CompileSeason(year int) {
+func CompileSeason(year int) (Season, error) {
 	s, err := getZeroDay(year)
 	if err != nil {
 		//TODO
@@ -98,17 +106,31 @@ func CompileSeason(year int) {
 		panic(err)
 	}
 
-	collector, err := collectSeason(startDate, endDate)
+	tms, err := collectSeasonDates(startDate, endDate)
 	if err != nil {
 		//TODO
 		panic(err)
 	}
 
 	// lib.PrettyLog(collector)
-	collector.FilterFbsTeams()
-	lib.PrettyLog(len(collector))
-	lib.PrettyLog(collector["130"])
+	tms.FilterFbsTeams()
+	lib.PrettyLog(len(tms))
+	lib.PrettyLog(tms["130"])
 
+	//collect games
+	gms, err := collectGames(tms)
+	if err != nil {
+		//TODO
+		panic(err)
+	}
+
+	szn := Season{
+		Year:  year,
+		Teams: tms,
+		Games: gms,
+	}
+
+	return szn, nil
 }
 
 func getZeroDay(year int) (ESPNSeason, error) {
@@ -148,7 +170,8 @@ func getSeasonDateRanges(s ESPNSeason) (start time.Time, end time.Time, err erro
 	return start, end, nil
 }
 
-func collectSeason(startDate time.Time, endDate time.Time) (tc TeamCollector, err error) {
+func collectSeasonDates(startDate time.Time, endDate time.Time) (SeasonTeams, error) {
+	tc := make(SeasonTeams)
 	currDate := startDate
 
 	for {
@@ -177,4 +200,34 @@ func collectSeason(startDate time.Time, endDate time.Time) (tc TeamCollector, er
 	}
 
 	return tc, nil
+}
+
+// TODO need to batch that fetch calls for speed as order is irrelevant
+func collectGames(st SeasonTeams) (map[string]ESPNCfbGame, error) {
+	games := make(map[string]ESPNCfbGame)
+	collectedGameIds := make(map[string]struct{})
+
+	for _, s := range st {
+		for _, cg := range s.Schedule {
+			if _, ok := collectedGameIds[cg.GameId]; ok {
+				continue
+			}
+
+			id, err := strconv.Atoi(cg.GameId)
+			if err != nil {
+				return games, err
+			}
+			gm, err := fetchEspnStats(id)
+			if err != nil {
+				return games, err
+			}
+			log.Printf("Query for %v complete", id)
+
+			games[cg.GameId] = gm
+			collectedGameIds[cg.GameId] = struct{}{}
+		}
+	}
+
+	return games, nil
+
 }
