@@ -218,6 +218,10 @@ type ESPNTeamsSportsLeagueTeam struct {
 }
 
 /* Team (Individual against teamId) */
+type ESPNTeamWrapper struct {
+	Team ESPNCfbTeam `json:"team"`
+}
+
 type ESPNCfbTeam struct {
 	Id               string      `json:"id"`
 	Uid              string      `json:"uid"`

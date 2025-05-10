@@ -52,14 +52,14 @@ func HandleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 	//TODO placeholders
 	//TODO sanitize inputs year < now.year, div must be valid, etc
-	div := "fbs"
+	// div := "fbs"
 	yr := 2024
 
 	szn, err := func() (core.Season, error) {
 		cfbrRepo := CfbrRepository()
-		queryId := createQueryId(yr, div)
+		// queryId := createQueryId(yr, div)
 
-		dbSzn, err := cfbrRepo.FindTById(queryId)
+		dbSzn, err := cfbrRepo.FindTById(strconv.Itoa(yr))
 		if err != nil {
 
 			log.Println("Season not found creating new")
@@ -102,7 +102,7 @@ func HandleCfbrGet(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 
-	fmt.Printf("Season %v created with %v schools and %v games\n", szn.Year, len(szn.Teams), len(szn.Games))
+	fmt.Printf("Season %v created with %v schools, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
 	//TODO compute weights
 	// cs, err := core.ComputeSeason(szn)
 	// if err != nil {
@@ -111,7 +111,7 @@ func HandleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Computation complete")
 
-	api.Response.Ok(w)
+	api.Response.Ok(w, szn)
 }
 
 func createQueryId(year int, division string) string {

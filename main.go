@@ -5,14 +5,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/recursionexcursion/dd-go-api/internal/cfbr/core"
+	"github.com/recursionexcursion/dd-go-api/internal/app"
 	"github.com/recursionexcursion/dd-go-api/internal/lib"
 )
 
 func main() {
-	// go beeGeesProtocol(12)
-	// app.App()
-	core.CompileSeason(2024)
+	go beeGeesProtocol(12)
+	app.App()
 }
 
 func beeGeesProtocol(min int) {

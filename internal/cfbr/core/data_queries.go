@@ -78,9 +78,9 @@ func fetchEspnAllTeams() (ESPNTeams, error) {
 	return fetchDataToT[ESPNTeams](r)
 }
 
-func fetchEspnTeam(teamId int) (ESPNCfbTeam, error) {
+func fetchEspnTeam(teamId int) (ESPNTeamWrapper, error) {
 	r := routeBuilder().espn.team(teamId)
-	return fetchDataToT[ESPNCfbTeam](r)
+	return fetchDataToT[ESPNTeamWrapper](r)
 }
 
 // func fetchEspnGroups() (ESPNGroups, error) {
