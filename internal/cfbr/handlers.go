@@ -17,14 +17,29 @@ import (
 
 func CfbrRoutes(mwChain []api.Middleware) []api.RouteHandler {
 
+	cfbrHttpMethods := api.HttpMethodGenerator("/cfbr")
+
+	var postCfrbRoute = api.RouteHandler{
+		MethodAndPath: cfbrHttpMethods().POST,
+		Handler:       handleCfbPost,
+		Middleware:    mwChain,
+	}
+
 	var getCfbrRoute = api.RouteHandler{
-		MethodAndPath: "GET /cfbr",
-		Handler:       HandleCfbrGet,
+		MethodAndPath: cfbrHttpMethods().GET,
+		Handler:       handleCfbrGet,
+		Middleware:    mwChain,
+	}
+	var deleteCfbrDataRoute = api.RouteHandler{
+		MethodAndPath: cfbrHttpMethods().DELETE,
+		Handler:       handleCfbrDeleteData,
 		Middleware:    mwChain,
 	}
 
 	return []api.RouteHandler{
+		postCfrbRoute,
 		getCfbrRoute,
+		deleteCfbrDataRoute,
 	}
 
 }
@@ -48,72 +63,135 @@ var brotCompressor = lib.CustomCompressor[core.Season](
 	},
 )
 
-func HandleCfbrGet(w http.ResponseWriter, r *http.Request) {
+func handleCfbPost(w http.ResponseWriter, r *http.Request) {
+	yr, ok, msg := extractYtQueryParam(r)
+	if !ok {
+		api.Response.BadRequest(w, msg)
+		return
+	}
 
+	intYr, err := strconv.Atoi(yr)
+	if err != nil {
+		api.Response.BadRequest(w, "Invalid query params")
+		return
+	}
+
+	szn, err := core.CompileSeason(intYr)
+	if err != nil {
+		api.Response.ServerError(w, "Unable to compile season")
+		return
+	}
+	log.Printf("Season %v created with %v schools, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
+
+	compressedSeason, err := brotCompressor.Compress(szn)
+	if err != nil {
+		api.Response.ServerError(w, "Error while compressing season")
+		return
+	}
+
+	scs := core.SerializeableCompressedSeason{
+		Id:               strconv.Itoa(szn.Year),
+		Year:             szn.Year,
+		CreatedAt:        int(time.Now().UnixMilli()),
+		CompressedSeason: compressedSeason,
+	}
+
+	cfbrRepo := CfbrRepository()
+	ok, err = cfbrRepo.UpsertT(scs, bson.M{"id": scs.Id})
+	if !ok || err != nil {
+		api.Response.ServerError(w, "Error saving data to db")
+		return
+	}
+
+	log.Println("Season saved")
+
+	// return szn, nil
+	api.Response.Created(w)
+}
+
+func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
+	yr, ok, msg := extractYtQueryParam(r)
+	if !ok {
+		api.Response.BadRequest(w, msg)
+		return
+	}
+
+	/* TODO
+	* Only save (cache) curr year and possilby recent years data is about 143kb a szn (compressed)
+	 */
 	//TODO placeholders
 	//TODO sanitize inputs year < now.year, div must be valid, etc
 	// div := "fbs"
-	yr := 2024
-
-	szn, err := func() (core.Season, error) {
-		cfbrRepo := CfbrRepository()
-		// queryId := createQueryId(yr, div)
-
-		dbSzn, err := cfbrRepo.FindTById(strconv.Itoa(yr))
-		if err != nil {
-
-			log.Println("Season not found creating new")
-
-			szn, err := core.CompileSeason(yr)
-			if err != nil {
-				return core.Season{}, err
-			}
-
-			/* TODO
-			* Only save (cache) curr year and possilby recent years data is about 143kb a szn (compressed)
-			 */
-			compressedSeason, err := brotCompressor.Compress(szn)
-			if err != nil {
-				return core.Season{}, err
-			}
-
-			scs := core.SerializeableCompressedSeason{
-				Id:               strconv.Itoa(szn.Year),
-				Year:             szn.Year,
-				CreatedAt:        int(time.Now().UnixMilli()),
-				CompressedSeason: compressedSeason,
-			}
-
-			cfbrRepo.UpsertT(scs, bson.M{"id": scs.Id})
-
-			log.Println("Season saved")
-
-			return szn, nil
-		} else {
-			log.Println("Season found decompressing")
-			szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
-			if err != nil {
-				return core.Season{}, err
-			}
-			return szn, nil
-		}
-	}()
+	// yr := 2024
+	cfbrRepo := CfbrRepository()
+	dbSzn, err := cfbrRepo.FindTById(yr)
 	if err != nil {
-		panic(err)
+		api.Response.NotFound(w, fmt.Sprintf("Season %v not found", yr))
+		return
 	}
+	szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
+	if err != nil {
+		api.Response.ServerError(w, "Error during season decompression")
+	}
+	log.Printf("Season %v found with %v schools, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
+	// 	// queryId := createQueryId(yr, div)
 
-	fmt.Printf("Season %v created with %v schools, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
+	// szn, err := func() (core.Season, error) {
+	// 	// queryId := createQueryId(yr, div)
+
+	// 	if err != nil {
+
+	// 	} else {
+	// 		log.Println("Season found decompressing")
+	// 		szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
+	// 		if err != nil {
+	// 			return core.Season{}, err
+	// 		}
+	// 		return szn, nil
+	// 	}
+	// }()
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 	//TODO compute weights
 	// cs, err := core.ComputeSeason(szn)
 	// if err != nil {
 	// 	panic(err)
 	// }
 
-	log.Println("Computation complete")
+	// log.Println("Computation complete")
 
 	api.Response.Ok(w, szn)
 }
 
 func createQueryId(year int, division string) string {
 	return fmt.Sprintf("%v%v", division, year)
+}
+
+var handleCfbrDeleteData = func(w http.ResponseWriter, r *http.Request) {
+	yr, ok, msg := extractYtQueryParam(r)
+	if !ok {
+		api.Response.BadRequest(w, msg)
+		return
+	}
+
+	cfbrRepo := CfbrRepository()
+	ok, err := cfbrRepo.DeleteById(yr)
+	if !ok || err != nil {
+		log.Println(err)
+		api.Response.ServerError(w, "Data could not be deleted")
+		return
+	}
+	api.Response.Ok(w, fmt.Sprintf("Season %v DELETED", yr))
+}
+
+/* Returns param, success, error msg to pass along to w */
+
+func extractYtQueryParam(r *http.Request) (string, bool, string) {
+	yr := r.URL.Query().Get("yr")
+	if yr == "" {
+		return "", false, "Invalid query params"
+	}
+	return yr, true, ""
 }

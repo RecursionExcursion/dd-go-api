@@ -178,6 +178,10 @@ func collectSeasonDates(startDate time.Time, endDate time.Time) (SeasonSchedules
 	tc := make(SeasonSchedules)
 	currDate := startDate
 
+	diff := endDate.Sub(startDate)
+	days := int(diff.Hours()/24) + 1
+	i := 1
+
 	for {
 		//call api
 		res, err := fetchEspnSeason(currDate.Format(espnQueryDateFormat))
@@ -193,7 +197,8 @@ func collectSeasonDates(startDate time.Time, endDate time.Time) (SeasonSchedules
 			tc.Add(t1, t2, match)
 			tc.Add(t2, t1, match)
 		}
-		log.Printf("Query for %v complete", currDate)
+		log.Printf("Query for %v complete (%v/%v)", currDate, i, days)
+		i++
 
 		//inc date
 		currDate = currDate.Add(time.Hour * 24)
@@ -208,28 +213,33 @@ func collectSeasonDates(startDate time.Time, endDate time.Time) (SeasonSchedules
 
 // TODO need to batch that fetch calls for speed as order is irrelevant
 func collectGames(st SeasonSchedules) (SeasonGames, error) {
+
 	games := make(SeasonGames)
-	collectedGameIds := make(map[string]struct{})
+
+	gIdMap := make(map[string]struct{})
 
 	for _, s := range st {
-		for _, cg := range s.Schedule {
-			if _, ok := collectedGameIds[cg.GameId]; ok {
-				continue
-			}
-
-			id, err := strconv.Atoi(cg.GameId)
-			if err != nil {
-				return games, err
-			}
-			gm, err := fetchEspnStats(id)
-			if err != nil {
-				return games, err
-			}
-			log.Printf("Query for Game %v complete", id)
-
-			games[cg.GameId] = gm
-			collectedGameIds[cg.GameId] = struct{}{}
+		for _, g := range s.Schedule {
+			gIdMap[g.GameId] = struct{}{}
 		}
+	}
+
+	l := len(gIdMap)
+	i := 1
+
+	for gId := range gIdMap {
+		id, err := strconv.Atoi(gId)
+		if err != nil {
+			return games, err
+		}
+		gm, err := fetchEspnStats(id)
+		if err != nil {
+			return games, err
+		}
+		log.Printf("Query for Game %v complete (%v/%v)", id, i, l)
+		i++
+
+		games[gId] = gm
 	}
 
 	return games, nil
@@ -238,6 +248,9 @@ func collectGames(st SeasonSchedules) (SeasonGames, error) {
 
 func collectTeamInfo(st SeasonSchedules) (SeasonTeams, error) {
 	tmMap := make(SeasonTeams)
+
+	l := len(st)
+	index := 1
 
 	for id := range st {
 		i, err := strconv.Atoi(id)
@@ -248,7 +261,8 @@ func collectTeamInfo(st SeasonSchedules) (SeasonTeams, error) {
 		if err != nil {
 			panic(err)
 		}
-		log.Printf("Query for Team %v complete", id)
+		log.Printf("Query for Team %v complete (%v/%v)", id, index, l)
+		index++
 
 		tmMap[tm.Team.Id] = tm.Team
 

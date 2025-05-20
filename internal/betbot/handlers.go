@@ -19,7 +19,7 @@ func BetbotRoutes(mwChains struct {
 	KeyChain []api.Middleware
 }) []api.RouteHandler {
 
-	bbBase := api.RestMethodGenerator("/betbot")
+	bbBase := api.HttpMethodGenerator("/betbot")
 
 	var getBetBotRoute = api.RouteHandler{
 		MethodAndPath: bbBase().GET,

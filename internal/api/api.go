@@ -85,7 +85,7 @@ type HTTPMethods struct {
 	DELETE string
 }
 
-func RestMethodGenerator(base string) func(path ...string) HTTPMethods {
+func HttpMethodGenerator(base string) func(path ...string) HTTPMethods {
 	return func(paths ...string) HTTPMethods {
 
 		pathStr := ""

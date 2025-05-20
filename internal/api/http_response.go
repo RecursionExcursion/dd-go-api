@@ -17,6 +17,8 @@ type customResponse = func(http.ResponseWriter, int, ...any)
 
 type ApiResponses struct {
 	Ok              response
+	Created         response
+	NoContent       response
 	ServerError     response
 	NotFound        response
 	Unauthorized    response
@@ -35,6 +37,14 @@ var Response = ApiResponses{
 	/* 200 */
 	Ok: func(w http.ResponseWriter, data ...any) {
 		send(w, 200, data)
+	},
+
+	Created: func(w http.ResponseWriter, data ...any) {
+		send(w, 201, data)
+	},
+
+	NoContent: func(w http.ResponseWriter, data ...any) {
+		send(w, 204, nil)
 	},
 
 	/* 300 */
@@ -113,15 +123,20 @@ func send(w http.ResponseWriter, status int, data any) {
 	}
 
 	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(data)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if status == 204 || data != nil {
+		err := json.NewEncoder(&buf).Encode(data)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	w.Write(buf.Bytes())
+
+	if buf.Len() > 0 {
+		w.Write(buf.Bytes())
+	}
 }
 
 func zip(w http.ResponseWriter, status int, data ...any) {

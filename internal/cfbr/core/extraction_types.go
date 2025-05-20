@@ -263,8 +263,6 @@ type TeamGroups struct {
 type ESPNCfbGame struct {
 	Boxscore GameBoxScore `json:"boxscore"`
 	Header   GameHeader   `json:"header"`
-	Links    []ESPNLink   `json:"links"`
-	Week     int          `json:"week"`
 }
 
 type GameHeader struct {
@@ -274,6 +272,8 @@ type GameHeader struct {
 		Year int `json:"year"`
 		Type int `json:"type"`
 	} `json:"season"`
+	Links []ESPNLink `json:"links"`
+	Week  int        `json:"week"`
 }
 
 type GameBoxScore struct {
