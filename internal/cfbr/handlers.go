@@ -21,18 +21,18 @@ func CfbrRoutes(mwChain []api.Middleware) []api.RouteHandler {
 
 	var postCfrbRoute = api.RouteHandler{
 		MethodAndPath: cfbrHttpMethods().POST,
-		Handler:       handleCfbPost,
+		Handler:       handleCreateCfbStats,
 		Middleware:    mwChain,
 	}
 
 	var getCfbrRoute = api.RouteHandler{
 		MethodAndPath: cfbrHttpMethods().GET,
-		Handler:       handleCfbrGet,
+		Handler:       handleGetCfbrRankings,
 		Middleware:    mwChain,
 	}
 	var deleteCfbrDataRoute = api.RouteHandler{
 		MethodAndPath: cfbrHttpMethods().DELETE,
-		Handler:       handleCfbrDeleteData,
+		Handler:       handleDeleteCfbrData,
 		Middleware:    mwChain,
 	}
 
@@ -63,7 +63,7 @@ var brotCompressor = lib.CustomCompressor[core.Season](
 	},
 )
 
-func handleCfbPost(w http.ResponseWriter, r *http.Request) {
+func handleCreateCfbStats(w http.ResponseWriter, r *http.Request) {
 	yr, ok, msg := extractYtQueryParam(r)
 	if !ok {
 		api.Response.BadRequest(w, msg)
@@ -109,7 +109,7 @@ func handleCfbPost(w http.ResponseWriter, r *http.Request) {
 	api.Response.Created(w)
 }
 
-func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
+func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 	yr, ok, msg := extractYtQueryParam(r)
 	if !ok {
 		api.Response.BadRequest(w, msg)
@@ -117,12 +117,9 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	/* TODO
-	* Only save (cache) curr year and possilby recent years data is about 143kb a szn (compressed)
+	* Only save (cache) curr year and possibly recent years data is about 143kb a szn (compressed)
 	 */
-	//TODO placeholders
 	//TODO sanitize inputs year < now.year, div must be valid, etc
-	// div := "fbs"
-	// yr := 2024
 	cfbrRepo := CfbrRepository()
 	dbSzn, err := cfbrRepo.FindTById(yr)
 	if err != nil {
@@ -134,25 +131,6 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 		api.Response.ServerError(w, "Error during season decompression")
 	}
 	log.Printf("Season %v found with %v schools, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
-	// 	// queryId := createQueryId(yr, div)
-
-	// szn, err := func() (core.Season, error) {
-	// 	// queryId := createQueryId(yr, div)
-
-	// 	if err != nil {
-
-	// 	} else {
-	// 		log.Println("Season found decompressing")
-	// 		szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
-	// 		if err != nil {
-	// 			return core.Season{}, err
-	// 		}
-	// 		return szn, nil
-	// 	}
-	// }()
-	// if err != nil {
-	// 	panic(err)
-	// }
 
 	//TODO compute weights
 	// cs, err := core.ComputeSeason(szn)
@@ -162,14 +140,10 @@ func handleCfbrGet(w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Computation complete")
 
-	api.Response.Ok(w, szn)
+	api.Response.Ok(w, szn, nil)
 }
 
-func createQueryId(year int, division string) string {
-	return fmt.Sprintf("%v%v", division, year)
-}
-
-var handleCfbrDeleteData = func(w http.ResponseWriter, r *http.Request) {
+var handleDeleteCfbrData = func(w http.ResponseWriter, r *http.Request) {
 	yr, ok, msg := extractYtQueryParam(r)
 	if !ok {
 		api.Response.BadRequest(w, msg)
@@ -186,8 +160,7 @@ var handleCfbrDeleteData = func(w http.ResponseWriter, r *http.Request) {
 	api.Response.Ok(w, fmt.Sprintf("Season %v DELETED", yr))
 }
 
-/* Returns param, success, error msg to pass along to w */
-
+/* Returns (param, success, error msg) */
 func extractYtQueryParam(r *http.Request) (string, bool, string) {
 	yr := r.URL.Query().Get("yr")
 	if yr == "" {

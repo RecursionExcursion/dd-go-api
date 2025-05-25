@@ -8,8 +8,8 @@ const games = "/games"       //?division=<division>&year=<year>&seasonType=<type
 const stats = "/games/teams" //?year=<year>&week=<week>&seasonType=<type>""
 
 // seasonTypes
-const regularSeason = "regular"
-const postseason = "postseason"
+const regularSeason = 2
+const postseason = 3
 
 // classifications
 const fbs = "fbs"

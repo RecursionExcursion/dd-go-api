@@ -1,219 +1,272 @@
 package core
 
-import (
-	"errors"
-	"log"
-	"strconv"
-)
+// import (
+// 	"errors"
+// 	"fmt"
+// 	"log"
+// 	"strconv"
+// )
 
-type Stat struct {
-	Value  int
-	Weight int
-	Rank   int
-}
+// type RankerC struct {
+// 	season Season
+// }
 
-type TrackedStats struct {
-	Total struct {
-		Wins         Stat
-		Losses       Stat
-		TotalOffense Stat
-		TotalDefense Stat
-		PF           Stat
-		PA           Stat
-	}
-	PG struct {
-		WinsPG   Stat
-		LossesPG Stat
-		OffPG    Stat
-		DefPG    Stat
-		PFPG     Stat
-		PAPG     Stat
-	}
-}
+// func (r *RankerC) Rank() {
 
-func (ts *TrackedStats) append(next TrackedStats) {
-	ts.Total.Wins.Value += next.Total.Wins.Value
-	ts.Total.Losses.Value += next.Total.Losses.Value
+// }
 
-	ts.Total.TotalOffense.Value += next.Total.TotalOffense.Value
-	ts.Total.TotalDefense.Value += next.Total.TotalDefense.Value
+// type Stat struct {
+// 	Value  int
+// 	Weight int
+// 	Rank   int
+// }
 
-	ts.Total.PF.Value += next.Total.PF.Value
-	ts.Total.PA.Value += next.Total.PA.Value
-}
+// type TrackedStats struct {
+// 	Total struct {
+// 		Wins         Stat
+// 		Losses       Stat
+// 		TotalOffense Stat
+// 		TotalDefense Stat
+// 		PF           Stat
+// 		PA           Stat
+// 	}
+// 	PG struct {
+// 		WinsPG   Stat
+// 		LossesPG Stat
+// 		OffPG    Stat
+// 		DefPG    Stat
+// 		PFPG     Stat
+// 		PAPG     Stat
+// 	}
+// }
 
-type WeeklyTeam struct {
-	Id          string
-	Week        int
-	GamesPlayed []string
-	Stats       TrackedStats
-}
+// func (ts *TrackedStats) append(next TrackedStats) {
+// 	ts.Total.Wins.Value += next.Total.Wins.Value
+// 	ts.Total.Losses.Value += next.Total.Losses.Value
 
-type ComputedSeason struct {
-	SeasonInfo         Season
-	RegularSeasonWeeks [][]WeeklyTeam
-	PostSeasonWeeks    [][]WeeklyTeam
-}
+// 	ts.Total.TotalOffense.Value += next.Total.TotalOffense.Value
+// 	ts.Total.TotalDefense.Value += next.Total.TotalDefense.Value
 
-func ComputeSeason(s Season) (ComputedSeason, error) {
-	cs, err := createWeeks(s)
-	if err != nil {
-		return ComputedSeason{}, err
-	}
+// 	ts.Total.PF.Value += next.Total.PF.Value
+// 	ts.Total.PA.Value += next.Total.PA.Value
+// }
 
-	//here the cs should be full of each weeks stats
+// type WeeklyTeam struct {
+// 	Id          string
+// 	Week        int
+// 	GamesPlayed []string
+// 	Stats       TrackedStats
+// }
 
-	return cs, nil
-}
+// type ComputedSeason struct {
+// 	SeasonInfo         Season
+// 	RegularSeasonWeeks [][]WeeklyTeam
+// 	PostSeasonWeeks    [][]WeeklyTeam
+// }
 
-func createWeeks(s Season) (ComputedSeason, error) {
-	lw := FindLastWeek(s)
+// func ComputeSeason(s Season) (ComputedSeason, error) {
+// 	cs, err := createWeeks(s)
+// 	if err != nil {
+// 		return ComputedSeason{}, err
+// 	}
 
-	cs := ComputedSeason{
-		SeasonInfo:         s,
-		RegularSeasonWeeks: make([][]WeeklyTeam, lw),
-		PostSeasonWeeks:    make([][]WeeklyTeam, 1),
-	}
+// 	//here the cs should be full of each weeks stats
 
-	for i := range lw {
-		currWeek := i + 1
-		weekTeams := []WeeklyTeam{}
+// 	return cs, nil
+// }
 
-		for _, t := range s.Teams {
-			//create team for week #
-			wt := WeeklyTeam{
-				Id:          t.Id,
-				Week:        currWeek,
-				GamesPlayed: []string{},
-				Stats:       TrackedStats{},
-			}
+// func createWeeks(s Season) (ComputedSeason, error) {
+// 	lw := FindLastWeek(s)
 
-			//Get schedule
-			_, ok := s.Schedules[t.Id]
-			if !ok {
-				log.Printf("Schedule not found for team %v", t.Id)
-			}
+// 	cs := ComputedSeason{
+// 		SeasonInfo:         s,
+// 		RegularSeasonWeeks: make([][]WeeklyTeam, lw),
+// 		PostSeasonWeeks:    make([][]WeeklyTeam, 1),
+// 	}
 
-			//iterate gameIds and query game map
-			// for _, gId := range schd.Schedule {
+// 	for i := range lw {
+// 		currWeek := i + 1
+// 		weekTeams := []WeeklyTeam{}
 
-			// }
+// 		for _, t := range s.Teams {
+// 			//create team for week #
+// 			wt := WeeklyTeam{
+// 				Id:          t.Id,
+// 				Week:        currWeek,
+// 				GamesPlayed: []string{},
+// 				Stats:       TrackedStats{},
+// 			}
 
-			// //TODO Get games played
-			// for _, gId := range s.Games {
-			// 	gm, err := s.FindGameById(gId)
-			// 	if err != nil {
-			// 		log.Panicf("Game %v not found", gId)
-			// 	}
+// 			//Get schedule
+// 			schd, ok := s.Schedules[t.Id]
+// 			if !ok {
+// 				log.Printf("Schedule not found for team %v", t.Id)
+// 			}
 
-			// 	if gm.Game.SeasonType == postseason || gm.Game.Week > currWeek {
-			// 		continue
-			// 	}
+// 			//iterate gameIds and query game map
+// 			for _, cg := range schd.Schedule {
+// 				gm, ok := s.Games[cg.GameId]
+// 				if !ok {
+// 					log.Panicf("Game %v not found", cg.GameId)
+// 				}
 
-			// 	//Compile stats from game (gm)
-			// 	ts, err := compileGameStats(t.Team.Id, gm)
-			// 	if err != nil {
-			// 		panic(err)
-			// 	}
+// 				// for _, g := range s.Games {
+// 				// gm, err := s.FindGameById(gId)
+// 				// if err != nil {
+// 				// }
 
-			// 	wt.Stats.append(ts)
-			// }
+// 				if gm.Header.Season.Type == postseason || gm.Header.Week > currWeek {
+// 					continue
+// 				}
 
-			//TODO get stats for games played
+// 				//Compile stats from game (gm)
+// 				intId, err := strconv.Atoi(t.Id)
+// 				if err != nil {
+// 					log.Panicf("Could not convert id %v to a int", t.Id)
+// 				}
+// 				ts, err := compileGameStats(intId, gm)
+// 				if err != nil {
+// 					panic(err)
+// 				}
 
-			weekTeams = append(weekTeams, wt)
-		}
-		cs.RegularSeasonWeeks[i] = weekTeams
-	}
+// 				wt.Stats.append(ts)
+// 			}
 
-	return cs, nil
-}
+// 			// //TODO Get games played
+// 			// for _, gId := range s.Games {
+// 			// 	gm, err := s.FindGameById(gId)
+// 			// 	if err != nil {
+// 			// 		log.Panicf("Game %v not found", gId)
+// 			// 	}
 
-func FindLastWeek(s Season) int {
+// 			// 	if gm.Game.SeasonType == postseason || gm.Game.Week > currWeek {
+// 			// 		continue
+// 			// 	}
 
-	lastRegSeasonWeek := 0
+// 			// 	//Compile stats from game (gm)
+// 			// 	ts, err := compileGameStats(t.Team.Id, gm)
+// 			// 	if err != nil {
+// 			// 		panic(err)
+// 			// 	}
 
-	// for _, g := range s.Games {
-	// 	if g.Game.SeasonType == regularSeason &&
-	// 		g.Game.Completed &&
-	// 		g.Game.Week > lastRegSeasonWeek {
-	// 		lastRegSeasonWeek = g.Game.Week
-	// 	}
-	// }
+// 			// 	wt.Stats.append(ts)
+// 			// }
 
-	return lastRegSeasonWeek
-}
+// 			//TODO get stats for games played
 
-func compileGameStats(tId int, cg CompleteGame) (TrackedStats, error) {
+// 			weekTeams = append(weekTeams, wt)
+// 			cs.RegularSeasonWeeks[i] = weekTeams
+// 		}
+// 	}
+// 	return cs, nil
+// }
 
-	tm, opp, err := cg.getTeam(tId)
-	if err != nil {
-		return TrackedStats{}, err
-	}
+// func FindLastWeek(s Season) int {
 
-	off, err := getTotalYards(tm)
-	if err != nil {
-		log.Printf("Off could not be found for team %v in game %v", tId, cg.Id)
-	}
+// 	lastRegSeasonWeek := 0
 
-	def, err := getTotalYards(opp)
-	if err != nil {
-		log.Printf("Def could not be found for team %v in game %v", tId, cg.Id)
-	}
+// 	for _, g := range s.Games {
+// 		if g.Header.Season.Type == regularSeason &&
+// 			g.Header.Week > lastRegSeasonWeek {
+// 			lastRegSeasonWeek = g.Header.Week
+// 		}
+// 	}
 
-	win, loss := getWinLoss(tm, opp)
-	ts := TrackedStats{
-		Total: struct {
-			Wins         Stat
-			Losses       Stat
-			TotalOffense Stat
-			TotalDefense Stat
-			PF           Stat
-			PA           Stat
-		}{
-			Wins:   win,
-			Losses: loss,
+// 	return lastRegSeasonWeek
+// }
 
-			TotalOffense: off,
-			TotalDefense: def,
+// func compileGameStats(tId int, cg ESPNCfbGame) (TrackedStats, error) {
 
-			PA: getPointsScored(opp),
-			PF: getPointsScored(tm),
-		},
-	}
-	return ts, nil
-}
+// 	tm, opp, err := cg.getTeam(tId)
+// 	if err != nil {
+// 		return TrackedStats{}, err
+// 	}
 
-func getTotalYards(tm GameTeam) (Stat, error) {
-	for _, s := range tm.Stats {
-		if s.Category == totalYardsStatKey {
-			stat, err := strconv.Atoi(s.Stat)
-			if err != nil {
+// 	off, err := getTotalYards(tm)
+// 	if err != nil {
+// 		log.Printf("Off could not be found for team %v in game %v", tId, cg.Id)
+// 	}
 
-			}
-			return Stat{
-				Value: stat,
-			}, nil
-		}
-	}
-	return Stat{}, errors.New("total offense not found")
-}
+// 	def, err := getTotalYards(opp)
+// 	if err != nil {
+// 		log.Printf("Def could not be found for team %v in game %v", tId, cg.Id)
+// 	}
 
-func getPointsScored(tm GameTeam) Stat {
-	return Stat{
-		Value: int(tm.Points),
-	}
-}
+// 	win, loss := getWinLoss(tm, opp)
+// 	ts := TrackedStats{
+// 		Total: struct {
+// 			Wins         Stat
+// 			Losses       Stat
+// 			TotalOffense Stat
+// 			TotalDefense Stat
+// 			PF           Stat
+// 			PA           Stat
+// 		}{
+// 			Wins:   win,
+// 			Losses: loss,
 
-func getWinLoss(tm GameTeam, opp GameTeam) (winStat Stat, lossStat Stat) {
-	if tm.Points > opp.Points {
-		winStat = Stat{
-			Value: 1,
-		}
-	} else {
-		lossStat = Stat{
-			Value: 1,
-		}
-	}
-	return winStat, lossStat
-}
+// 			TotalOffense: off,
+// 			TotalDefense: def,
+
+// 			PA: getPointsScored(opp),
+// 			PF: getPointsScored(tm),
+// 		},
+// 	}
+// 	return ts, nil
+// }
+
+// func getTotalYards(tm GameTeam) (Stat, error) {
+// 	for _, s := range tm.Stats {
+// 		if s.Category == totalYardsStatKey {
+// 			stat, err := strconv.Atoi(s.Stat)
+// 			if err != nil {
+
+// 			}
+// 			return Stat{
+// 				Value: stat,
+// 			}, nil
+// 		}
+// 	}
+// 	return Stat{}, errors.New("total offense not found")
+// }
+
+// func getPointsScored(tm GameTeam) Stat {
+// 	return Stat{
+// 		Value: int(tm.Points),
+// 	}
+// }
+
+// func getWinLoss(tm GameTeam, opp GameTeam) (winStat Stat, lossStat Stat) {
+// 	if tm.Points > opp.Points {
+// 		winStat = Stat{
+// 			Value: 1,
+// 		}
+// 	} else {
+// 		lossStat = Stat{
+// 			Value: 1,
+// 		}
+// 	}
+// 	return winStat, lossStat
+// }
+
+// func (gm *ESPNCfbGame) getTeam(id string) (curr Team, opp Team, err error) {
+
+// 	assigned := false
+
+// 	for _, t := range gm.Boxscore.Teams {
+// 		if t.Team.Id == id {
+// 			curr = t
+// 		} else {
+// 			opp = t
+// 			/* If this flag is tripped it means that the opp was assigned twice,
+// 			 * thus curr team was not found
+// 			 * Or ESPN fucked up and included 3 teams
+// 			 */
+// 			if assigned == true {
+// 				err = errors.New(fmt.Sprintf(" %v not found in game %v", id, gm.Header.Id))
+// 			}
+// 			assigned = true
+// 		}
+// 	}
+// 	return curr, opp, err
+// }
