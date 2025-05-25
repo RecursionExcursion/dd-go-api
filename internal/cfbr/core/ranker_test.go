@@ -1,92 +1,100 @@
 package core
 
-import "testing"
+import (
+	"testing"
+)
+
+func createGame(
+	id int,
+	wk int,
+	home Stat,
+	away Stat,
+) RankerGame {
+	return RankerGame{
+		Id:   id,
+		Week: wk,
+		Stats: RankerGameStats{
+			Home: home,
+			Away: away,
+		},
+	}
+}
 
 var mockTeams = []RankerTeam{
-	{id: 1},
-	{id: 2},
-	{id: 3},
-	{id: 4},
+	{Id: 1},
+	{Id: 2},
+	{Id: 3},
+	{Id: 4},
 }
 
 var mockGames = []RankerGame{
-	/* Week 1 */
-	{id: 11,
-		week: 1,
-		stats: RankerGameStats{
-			home: Stat{
-				id:         1,
-				totalYards: 100,
-				points:     7,
-			},
-			away: Stat{
-				id:         2,
-				totalYards: 75,
-				points:     5,
-			},
-		},
-	},
 
-	{id: 12,
-		week: 1,
-		stats: RankerGameStats{
-			home: Stat{
-				id:         3,
-				totalYards: 150,
-				points:     10,
-			},
-			away: Stat{
-				id:         4,
-				totalYards: 25,
-				points:     0,
-			},
+	/* Week 1 */
+	createGame(11, 1,
+		Stat{
+			Id:         1,
+			TotalYards: 100,
+			Points:     7,
 		},
-	},
+		Stat{
+			Id:         2,
+			TotalYards: 75,
+			Points:     5,
+		},
+	),
+
+	createGame(
+		12,
+		1,
+		Stat{
+			Id:         3,
+			TotalYards: 150,
+			Points:     10,
+		},
+		Stat{
+			Id:         4,
+			TotalYards: 25,
+			Points:     0,
+		},
+	),
 
 	/* week 2 */
 
-	{id: 13,
-		week: 2,
-		stats: RankerGameStats{
-			home: Stat{
-				id:         1,
-				totalYards: 100,
-				points:     7,
-			},
-			away: Stat{
-				id:         3,
-				totalYards: 150,
-				points:     10,
-			},
+	createGame(
+		13,
+		2,
+		Stat{
+			Id:         1,
+			TotalYards: 100,
+			Points:     7,
 		},
-	},
+		Stat{
+			Id:         3,
+			TotalYards: 150,
+			Points:     10,
+		},
+	),
 
-	{id: 14,
-		week: 2,
-		stats: RankerGameStats{
-			home: Stat{
-				id:         2,
-				totalYards: 75,
-				points:     5,
-			},
-			away: Stat{
-				id:         4,
-				totalYards: 25,
-				points:     0,
-			},
+	createGame(
+		14,
+		2,
+		Stat{
+			Id:         2,
+			TotalYards: 75,
+			Points:     5,
 		},
-	},
+		Stat{
+			Id:         4,
+			TotalYards: 25,
+			Points:     0,
+		},
+	),
 }
 
 func TestConstructSeason(t *testing.T) {
 
-	// ranker := Ranker{struct{
-
-	// 	teams: mockTeams,
-	// 	games: mockGames,
-	// },
-	// }
-
 	Rank(mockTeams, mockGames)
+
+	t.Error("sdsd")
 
 }

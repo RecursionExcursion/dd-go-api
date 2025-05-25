@@ -2,35 +2,28 @@ package core
 
 import "log"
 
-type Ranker struct {
-	// rankerSeason RankerSeason
+type RankerTeam struct {
+	Id int
 }
 
-type RankerTeam = struct {
-	id int
+type Stat struct {
+	Id         int
+	TotalYards int
+	Points     int
 }
 
-type Stat = struct {
-	id         int
-	totalYards int
-	points     int
+type RankerGameStats struct {
+	Home Stat
+	Away Stat
 }
 
-type RankerGameStats = struct {
-	home Stat
-	away Stat
+type RankerGame struct {
+	Id    int
+	Week  int
+	Stats RankerGameStats
 }
 
-type RankerGame = struct {
-	id    int
-	week  int
-	stats RankerGameStats
-}
-
-// type RankerSeason = struct {
-// 	// options struct {
-// 	// }
-// }
+//
 
 /* Methods */
 func Rank(
@@ -77,26 +70,26 @@ func buildSeason(teams []RankerTeam, games []RankerGame) {
 
 	tm := teamMap{}
 	for _, t := range teams {
-		tm[t.id] = t
+		tm[t.Id] = t
 	}
 
 	gm := gameMap{}
 	wl := weekList{}
 	for _, g := range games {
-		gm[g.id] = g
+		gm[g.Id] = g
 
-		if g.week > len(wl) {
-			tmp := make(weekList, g.week)
+		if g.Week+1 > len(wl) {
+			tmp := make(weekList, g.Week+1)
 			copy(tmp, wl)
 			wl = tmp
-			wl[g.week] = week{
-				week:  g.week,
+			wl[g.Week] = week{
+				week:  g.Week,
 				games: []int{},
 			}
 		}
-		wk := wl[g.week]
-		wk.games = append(wk.games, g.id)
-		wl[g.week] = wk
+		wk := wl[g.Week]
+		wk.games = append(wk.games, g.Id)
+		wl[g.Week] = wk
 	}
 
 	weightMap := weightedWeekMap{}
