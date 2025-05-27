@@ -1,6 +1,7 @@
 package core
 
 import (
+	"log"
 	"testing"
 )
 
@@ -91,10 +92,48 @@ var mockGames = []RankerGame{
 	),
 }
 
-func TestConstructSeason(t *testing.T) {
+func TestBuildSeason(t *testing.T) {
 
-	Rank(mockTeams, mockGames)
+	szn := BuildSeason(mockTeams, mockGames)
 
-	t.Error("sdsd")
+	//test all teams were added
+	for k, v := range szn.teams {
+		if !(k == 1 || k == 2 || k == 3 || k == 4) {
+			t.Errorf("Invalid team id (%v)", k)
+		}
+		if szn.teams[k] != v {
+			t.Errorf("Team id (%v) key (%v) mismatch", v, k)
+		}
+	}
+
+	//test all games were added
+	for k := range szn.games {
+		if !(k == 11 || k == 12 || k == 13 || k == 14) {
+			t.Errorf("Invalid game id (%v)", k)
+		}
+	}
+
+	//test week list
+	wkList := szn.weeks
+	if len(wkList) != 3 {
+		t.Errorf("Week list is of len %v instead of %v", len(wkList), 3)
+	}
+	if len(wkList[0].games) > 0 {
+		t.Errorf("Week 0 should have 0 entires but instead has %v", wkList[0].games)
+	}
+	if len(wkList[1].games) != 2 {
+		t.Errorf("Week 1 should have 2 entires but instead has %v", wkList[1].games)
+	}
+	if len(wkList[2].games) != 2 {
+		t.Errorf("Week 2 should have 2 entires but instead has %v", wkList[2].games)
+	}
+
+	// log.Println(szn)
+}
+
+func TestRankSeason(t *testing.T) {
+	szn := BuildSeason(mockTeams, mockGames)
+	rs := RankSeason(&szn)
+	log.Println(rs)
 
 }
