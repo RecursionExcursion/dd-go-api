@@ -1,7 +1,6 @@
 package core
 
 import (
-	"log"
 	"testing"
 )
 
@@ -131,9 +130,98 @@ func TestBuildSeason(t *testing.T) {
 	// log.Println(szn)
 }
 
-func TestRankSeason(t *testing.T) {
+func TestCompileSeasonStats(t *testing.T) {
 	szn := BuildSeason(mockTeams, mockGames)
-	rs := RankSeason(&szn)
-	log.Println(rs)
+	rs := CompileSeasonStats(&szn)
+
+	//check tm1 wk1
+	checkStats(expectedStats{
+		wins: 1,
+		loss: 0,
+		off:  100,
+		def:  75,
+		pf:   7,
+		pa:   5,
+	},
+		rs.weightedWeeks[1][1],
+		t,
+	)
+
+	//check tm1 wk2
+	checkStats(expectedStats{
+		wins: 1,
+		loss: 1,
+		off:  200,
+		def:  225,
+		pf:   14,
+		pa:   15,
+	},
+		rs.weightedWeeks[2][1],
+		t,
+	)
+
+	//check tm4 wk1
+	checkStats(expectedStats{
+		wins: 1,
+		loss: 0,
+		off:  150,
+		def:  25,
+		pf:   10,
+		pa:   0,
+	},
+		rs.weightedWeeks[1][3],
+		t,
+	)
+
+	//check tm4 wk2
+	checkStats(expectedStats{
+		wins: 2,
+		loss: 0,
+		off:  300,
+		def:  125,
+		pf:   20,
+		pa:   7,
+	},
+		rs.weightedWeeks[2][3],
+		t,
+	)
+}
+
+type expectedStats struct {
+	wins int
+	loss int
+	off  int
+	def  int
+	pa   int
+	pf   int
+}
+
+func checkStats(expected expectedStats, tm team, t *testing.T) {
+	tmId := tm.id
+	stats := tm.stats
+
+	if stats.Wins != expected.wins {
+		t.Errorf("Team (%v) expected %v wins but had %v", tmId, expected.wins, stats.Wins)
+	}
+
+	if stats.Losses != expected.loss {
+		t.Errorf("Team (%v) expected %v losses but had %v", tmId, expected.loss, stats.Losses)
+	}
+
+	if stats.TotalOffense != expected.off {
+		t.Errorf("Team (%v) expected %v off but had %v", tmId, expected.off, stats.TotalOffense)
+	}
+
+	if stats.TotalDefense != expected.def {
+		t.Errorf("Team (%v) expected %v def but had %v", tmId, expected.def, stats.TotalDefense)
+	}
+
+	if stats.PF != expected.pf {
+		t.Errorf("Team (%v) expected %v pf but had %v", tmId, expected.pf, stats.PF)
+	}
+
+	if stats.PA != expected.pa {
+		t.Errorf("Team (%v) expected %v pa but had %v", tmId, expected.pa, stats.PA)
+	}
 
 }

@@ -135,9 +135,7 @@ func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
 }
 
 // Also will take in ranking params
-func RankSeason(rs *RankedSeason) *RankedSeason {
-
-	log.Println(rs)
+func CompileSeasonStats(rs *RankedSeason) *RankedSeason {
 
 	for _, wk := range rs.weeks {
 
