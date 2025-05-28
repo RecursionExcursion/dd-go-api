@@ -7,8 +7,8 @@ import (
 func createGame(
 	id int,
 	wk int,
-	home Stat,
-	away Stat,
+	home RankerStat,
+	away RankerStat,
 ) RankerGame {
 	return RankerGame{
 		Id:   id,
@@ -30,12 +30,12 @@ var mockGames = []RankerGame{
 
 	/* Week 1 */
 	createGame(11, 1,
-		Stat{
+		RankerStat{
 			Id:         1,
 			TotalYards: 100,
 			Points:     7,
 		},
-		Stat{
+		RankerStat{
 			Id:         2,
 			TotalYards: 75,
 			Points:     5,
@@ -45,12 +45,12 @@ var mockGames = []RankerGame{
 	createGame(
 		12,
 		1,
-		Stat{
+		RankerStat{
 			Id:         3,
 			TotalYards: 150,
 			Points:     10,
 		},
-		Stat{
+		RankerStat{
 			Id:         4,
 			TotalYards: 25,
 			Points:     0,
@@ -62,12 +62,12 @@ var mockGames = []RankerGame{
 	createGame(
 		13,
 		2,
-		Stat{
+		RankerStat{
 			Id:         1,
 			TotalYards: 100,
 			Points:     7,
 		},
-		Stat{
+		RankerStat{
 			Id:         3,
 			TotalYards: 150,
 			Points:     10,
@@ -77,12 +77,12 @@ var mockGames = []RankerGame{
 	createGame(
 		14,
 		2,
-		Stat{
+		RankerStat{
 			Id:         2,
 			TotalYards: 75,
 			Points:     5,
 		},
-		Stat{
+		RankerStat{
 			Id:         4,
 			TotalYards: 25,
 			Points:     0,
@@ -129,9 +129,47 @@ func TestBuildSeason(t *testing.T) {
 	// log.Println(szn)
 }
 
+type expectedStats struct {
+	wins int
+	loss int
+	off  int
+	def  int
+	pa   int
+	pf   int
+}
+
 func TestCompileSeasonStats(t *testing.T) {
-	szn := BuildSeason(mockTeams, mockGames)
-	rs := CompileSeasonStats(&szn)
+	var checkStats = func(expected expectedStats, tm team) {
+		tmId := tm.id
+		stats := tm.stats
+
+		if stats.Wins.Val != expected.wins {
+			t.Errorf("Team (%v) expected %v wins but had %v", tmId, expected.wins, stats.Wins)
+		}
+
+		if stats.Losses.Val != expected.loss {
+			t.Errorf("Team (%v) expected %v losses but had %v", tmId, expected.loss, stats.Losses)
+		}
+
+		if stats.TotalOffense.Val != expected.off {
+			t.Errorf("Team (%v) expected %v off but had %v", tmId, expected.off, stats.TotalOffense)
+		}
+
+		if stats.TotalDefense.Val != expected.def {
+			t.Errorf("Team (%v) expected %v def but had %v", tmId, expected.def, stats.TotalDefense)
+		}
+
+		if stats.PF.Val != expected.pf {
+			t.Errorf("Team (%v) expected %v pf but had %v", tmId, expected.pf, stats.PF)
+		}
+
+		if stats.PA.Val != expected.pa {
+			t.Errorf("Team (%v) expected %v pa but had %v", tmId, expected.pa, stats.PA)
+		}
+	}
+
+	rs := BuildSeason(mockTeams, mockGames)
+	CompileSeasonStats(&rs)
 
 	//check tm1 wk1
 	checkStats(expectedStats{
@@ -143,7 +181,6 @@ func TestCompileSeasonStats(t *testing.T) {
 		pa:   5,
 	},
 		rs.weightedWeeks[1][1],
-		t,
 	)
 
 	//check tm1 wk2
@@ -156,10 +193,9 @@ func TestCompileSeasonStats(t *testing.T) {
 		pa:   15,
 	},
 		rs.weightedWeeks[2][1],
-		t,
 	)
 
-	//check tm4 wk1
+	//check tm3 wk1
 	checkStats(expectedStats{
 		wins: 1,
 		loss: 0,
@@ -169,10 +205,9 @@ func TestCompileSeasonStats(t *testing.T) {
 		pa:   0,
 	},
 		rs.weightedWeeks[1][3],
-		t,
 	)
 
-	//check tm4 wk2
+	//check tm3 wk2
 	checkStats(expectedStats{
 		wins: 2,
 		loss: 0,
@@ -182,44 +217,26 @@ func TestCompileSeasonStats(t *testing.T) {
 		pa:   7,
 	},
 		rs.weightedWeeks[2][3],
-		t,
 	)
 }
 
-type expectedStats struct {
-	wins int
-	loss int
-	off  int
-	def  int
-	pa   int
-	pf   int
-}
-
-func checkStats(expected expectedStats, tm team, t *testing.T) {
-	tmId := tm.id
-	stats := tm.stats
-
-	if stats.Wins != expected.wins {
-		t.Errorf("Team (%v) expected %v wins but had %v", tmId, expected.wins, stats.Wins)
+func TestCalculateStatRankings(t *testing.T) {
+	var checkRank = func(expected int, actual int) {
+		if expected != actual {
+			t.Errorf("Ranking Error: Expected %v but got %v", expected, actual)
+		}
 	}
 
-	if stats.Losses != expected.loss {
-		t.Errorf("Team (%v) expected %v losses but had %v", tmId, expected.loss, stats.Losses)
-	}
+	rs := BuildSeason(mockTeams, mockGames)
+	CompileSeasonStats(&rs)
+	CalculateStatRankings(&rs)
 
-	if stats.TotalOffense != expected.off {
-		t.Errorf("Team (%v) expected %v off but had %v", tmId, expected.off, stats.TotalOffense)
-	}
+	t3w2 := rs.weightedWeeks[2][3]
 
-	if stats.TotalDefense != expected.def {
-		t.Errorf("Team (%v) expected %v def but had %v", tmId, expected.def, stats.TotalDefense)
-	}
+	checkRank(1, t3w2.stats.Wins.Rank)
+	checkRank(1, t3w2.stats.TotalOffense.Rank)
 
-	if stats.PF != expected.pf {
-		t.Errorf("Team (%v) expected %v pf but had %v", tmId, expected.pf, stats.PF)
-	}
+	t1w2 := rs.weightedWeeks[2][1]
+	checkRank(2, t1w2.stats.TotalOffense.Rank)
 
-	if stats.PA != expected.pa {
-		t.Errorf("Team (%v) expected %v pa but had %v", tmId, expected.pa, stats.PA)
-	}
 }

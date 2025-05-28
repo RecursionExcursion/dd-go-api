@@ -1,20 +1,23 @@
 package core
 
-import "log"
+import (
+	"log"
+	"sort"
+)
 
 type RankerTeam struct {
 	Id int
 }
 
-type Stat struct {
+type RankerStat struct {
 	Id         int
 	TotalYards int
 	Points     int
 }
 
 type RankerGameStats struct {
-	Home Stat
-	Away Stat
+	Home RankerStat
+	Away RankerStat
 }
 
 type RankerGame struct {
@@ -33,7 +36,12 @@ func Rank(
 	_ = BuildSeason(teams, games)
 }
 
-//TODO dont forget PI and SS
+type WeightedStat struct {
+	Val  int
+	Rank int
+}
+
+// TODO dont forget PI and SS
 type team struct {
 	id     int
 	week   int
@@ -41,12 +49,12 @@ type team struct {
 	weight int
 	games  []int
 	stats  struct {
-		Wins         int
-		Losses       int
-		TotalOffense int
-		TotalDefense int
-		PF           int
-		PA           int
+		Wins         WeightedStat
+		Losses       WeightedStat
+		TotalOffense WeightedStat
+		TotalDefense WeightedStat
+		PF           WeightedStat
+		PA           WeightedStat
 	}
 }
 
@@ -136,7 +144,7 @@ func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
 }
 
 // Also will take in ranking params
-func CompileSeasonStats(rs *RankedSeason) *RankedSeason {
+func CompileSeasonStats(rs *RankedSeason) {
 
 	for _, wk := range rs.weeks {
 
@@ -180,27 +188,110 @@ func CompileSeasonStats(rs *RankedSeason) *RankedSeason {
 			}
 		}
 	}
-
-	return rs
 }
 
-func UpdateWeightedTeam(currTeam Stat, oppTeam Stat, tm *team) {
+func UpdateWeightedTeam(currTeam RankerStat, oppTeam RankerStat, tm *team) {
 	if currTeam.Id != tm.id {
 		log.Panicf("Invalid team ids (%v-%v)", currTeam.Id, tm.id)
 	}
 
 	//Points
-	tm.stats.PF += currTeam.Points
-	tm.stats.PA += oppTeam.Points
+	tm.stats.PF.Val += currTeam.Points
+	tm.stats.PA.Val += oppTeam.Points
 
 	//Yards
-	tm.stats.TotalOffense += currTeam.TotalYards
-	tm.stats.TotalDefense += oppTeam.TotalYards
+	tm.stats.TotalOffense.Val += currTeam.TotalYards
+	tm.stats.TotalDefense.Val += oppTeam.TotalYards
 
 	//W/L
 	if currTeam.Points > oppTeam.Points {
-		tm.stats.Wins++
+		tm.stats.Wins.Val++
 	} else {
-		tm.stats.Losses++
+		tm.stats.Losses.Val++
+	}
+}
+
+/*
+Sort stats by rank in sep slices (this needs to be held in its own ds, and returned)
+*/
+
+func CalculateStatRankings(rs *RankedSeason) {
+
+	//iterate through weightedWeeks and sort stats assign rank
+	for i, wk := range rs.weightedWeeks {
+		tmSlice := []team{}
+
+		for _, tm := range wk {
+			tmSlice = append(tmSlice, tm)
+		}
+
+		//Sort by stats and assign rank
+
+		//wins
+		sort.Slice(tmSlice, func(a, b int) bool {
+			return tmSlice[a].stats.Wins.Val > tmSlice[b].stats.Wins.Val
+		})
+		for r, tm := range tmSlice {
+			if wt, ok := rs.weightedWeeks[i][tm.id]; ok {
+				wt.stats.Wins.Rank = r + 1
+				rs.weightedWeeks[i][tm.id] = wt
+			}
+		}
+
+		//off
+		sort.Slice(tmSlice, func(a, b int) bool {
+			return tmSlice[a].stats.TotalOffense.Val > tmSlice[b].stats.TotalOffense.Val
+		})
+		for r, tm := range tmSlice {
+			if wt, ok := rs.weightedWeeks[i][tm.id]; ok {
+				wt.stats.TotalOffense.Rank = r + 1
+				rs.weightedWeeks[i][tm.id] = wt
+			}
+		}
+
+		//pf
+		sort.Slice(tmSlice, func(a, b int) bool {
+			return tmSlice[a].stats.PF.Val > tmSlice[b].stats.PF.Val
+		})
+		for r, tm := range tmSlice {
+			if wt, ok := rs.weightedWeeks[i][tm.id]; ok {
+				wt.stats.PF.Rank = r + 1
+				rs.weightedWeeks[i][tm.id] = wt
+			}
+		}
+
+		/* These will be sorted in rev */
+		//losses
+		sort.Slice(tmSlice, func(a, b int) bool {
+			return tmSlice[a].stats.Losses.Val < tmSlice[b].stats.Losses.Val
+		})
+		for r, tm := range tmSlice {
+			if wt, ok := rs.weightedWeeks[i][tm.id]; ok {
+				wt.stats.Losses.Rank = r + 1
+				rs.weightedWeeks[i][tm.id] = wt
+			}
+		}
+
+		//def
+		sort.Slice(tmSlice, func(a, b int) bool {
+			return tmSlice[a].stats.TotalDefense.Val < tmSlice[b].stats.TotalDefense.Val
+		})
+		for r, tm := range tmSlice {
+			if wt, ok := rs.weightedWeeks[i][tm.id]; ok {
+				wt.stats.TotalDefense.Rank = r + 1
+				rs.weightedWeeks[i][tm.id] = wt
+			}
+		}
+		//pa
+		sort.Slice(tmSlice, func(a, b int) bool {
+			return tmSlice[a].stats.PA.Val < tmSlice[b].stats.PA.Val
+		})
+		for r, tm := range tmSlice {
+			if wt, ok := rs.weightedWeeks[i][tm.id]; ok {
+				wt.stats.PA.Rank = r + 1
+				rs.weightedWeeks[i][tm.id] = wt
+			}
+		}
+
 	}
 }
