@@ -24,7 +24,6 @@ var mockTeams = []RankerTeam{
 	{Id: 1},
 	{Id: 2},
 	{Id: 3},
-	{Id: 4},
 }
 
 var mockGames = []RankerGame{
@@ -95,9 +94,9 @@ func TestBuildSeason(t *testing.T) {
 
 	szn := BuildSeason(mockTeams, mockGames)
 
-	//test all teams were added
+	//test all teams were added, t4 is lower div so not checked
 	for k, v := range szn.teams {
-		if !(k == 1 || k == 2 || k == 3 || k == 4) {
+		if !(k == 1 || k == 2 || k == 3) {
 			t.Errorf("Invalid team id (%v)", k)
 		}
 		if szn.teams[k] != v {
@@ -223,5 +222,4 @@ func checkStats(expected expectedStats, tm team, t *testing.T) {
 	if stats.PA != expected.pa {
 		t.Errorf("Team (%v) expected %v pa but had %v", tmId, expected.pa, stats.PA)
 	}
-
 }

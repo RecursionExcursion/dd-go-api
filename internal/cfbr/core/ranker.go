@@ -33,6 +33,7 @@ func Rank(
 	_ = BuildSeason(teams, games)
 }
 
+//TODO dont forget PI and SS
 type team struct {
 	id     int
 	week   int
@@ -167,14 +168,16 @@ func CompileSeasonStats(rs *RankedSeason) *RankedSeason {
 			awayTeam := gm.Stats.Away
 
 			//Home team stats
-			wtHome := rs.weightedWeeks[wk.week][homeTeam.Id]
-			UpdateWeightedTeam(homeTeam, awayTeam, &wtHome)
-			rs.weightedWeeks[wk.week][homeTeam.Id] = wtHome
+			if wtHome, ok := rs.weightedWeeks[wk.week][homeTeam.Id]; ok {
+				UpdateWeightedTeam(homeTeam, awayTeam, &wtHome)
+				rs.weightedWeeks[wk.week][homeTeam.Id] = wtHome
+			}
 
 			//away team stats
-			wtAway := rs.weightedWeeks[wk.week][awayTeam.Id]
-			UpdateWeightedTeam(awayTeam, homeTeam, &wtAway)
-			rs.weightedWeeks[wk.week][awayTeam.Id] = wtAway
+			if wtAway, ok := rs.weightedWeeks[wk.week][awayTeam.Id]; ok {
+				UpdateWeightedTeam(awayTeam, homeTeam, &wtAway)
+				rs.weightedWeeks[wk.week][awayTeam.Id] = wtAway
+			}
 		}
 	}
 
