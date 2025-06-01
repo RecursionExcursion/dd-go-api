@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+var verboseLog = true
+
 func createGame(
 	id int,
 	wk int,
@@ -170,7 +172,7 @@ func TestCompileSeasonStats(t *testing.T) {
 	}
 
 	rs := BuildSeason(mockTeams, mockGames)
-	CompileSeasonStats(&rs)
+	rs.CompileSeasonStats()
 
 	//check tm1 wk1
 	checkStats(expectedStats{
@@ -222,31 +224,40 @@ func TestCompileSeasonStats(t *testing.T) {
 }
 
 func TestCalculateStatRankings(t *testing.T) {
-	// var checkRank = func(expected int, actual int) {
-	// 	if expected != actual {
-	// 		t.Errorf("Ranking Error: Expected %v but got %v", expected, actual)
-	// 	}
-	// }
+	var checkRank = func(expected int, actual int) {
+		if expected != actual {
+			t.Errorf("Ranking Error: Expected %v but got %v", expected, actual)
+		}
+	}
 
 	rs := BuildSeason(mockTeams, mockGames)
-	CompileSeasonStats(&rs)
-	CalculateStatRankings(&rs)
+	rs.CompileSeasonStats()
+	rs.CalculateStatRankings()
 
-	// t3w2 := rs.weightedWeeks[2][3]
-	// checkRank(1, t3w2.stats.Wins.Rank)
-	// checkRank(1, t3w2.stats.TotalOffense.Rank)
+	if verboseLog {
+		log.Print("\n\n")
+		log.Println("Mapped team weights")
+		log.Println("Week 1")
+		for _, v := range rs.weightedWeeks[1] {
+			log.Println(*v)
+		}
+		log.Println()
 
-	// t1w2 := rs.weightedWeeks[2][1]
-	// checkRank(2, t1w2.stats.TotalOffense.Rank)
-
-	log.Println("Week 1")
-	for _, v := range rs.weightedWeeks[1] {
-		log.Println(*v)
+		log.Println("Week 2")
+		for _, v := range rs.weightedWeeks[2] {
+			log.Println(*v)
+		}
+		log.Print("\n\n")
 	}
-	log.Println()
 
-	log.Println("Week 2")
-	for _, v := range rs.weightedWeeks[2] {
-		log.Println(*v)
+	t3w2 := rs.weightedWeeks[2][3]
+	checkRank(1, t3w2.stats.Wins.Rank)
+	checkRank(1, t3w2.stats.TotalOffense.Rank)
+
+	t1w2 := rs.weightedWeeks[2][1]
+	checkRank(2, t1w2.stats.TotalOffense.Rank)
+
+	for _, w := range rs.weightedWeeks {
+		log.Println(w.GetRankings())
 	}
 }

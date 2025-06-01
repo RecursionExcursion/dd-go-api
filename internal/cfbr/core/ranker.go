@@ -5,6 +5,9 @@ import (
 	"sort"
 )
 
+/* =====Types==== */
+
+/* External param types */
 type RankerTeam struct {
 	Id int
 }
@@ -26,19 +29,26 @@ type RankerGame struct {
 	Stats RankerGameStats
 }
 
-//
-
-/* Methods */
-func Rank(
-	teams []RankerTeam,
-	games []RankerGame,
-) {
-	_ = BuildSeason(teams, games)
+type RankedSeason struct {
+	teams         teamMap
+	games         gameMap
+	weeks         weekList
+	weightedWeeks weightedWeekMap
 }
 
+/* Types for internal calcs */
 type WeightedStat struct {
 	Rank int
 	Val  int
+}
+
+type TrackedStats struct {
+	Wins         WeightedStat
+	Losses       WeightedStat
+	TotalOffense WeightedStat
+	TotalDefense WeightedStat
+	PF           WeightedStat
+	PA           WeightedStat
 }
 
 // TODO dont forget PI and SS
@@ -48,51 +58,42 @@ type team struct {
 	rank   int
 	weight int
 	games  []int
-	stats  struct {
-		Wins         WeightedStat
-		Losses       WeightedStat
-		TotalOffense WeightedStat
-		TotalDefense WeightedStat
-		PF           WeightedStat
-		PA           WeightedStat
-	}
-}
-
-type week struct {
-	week  int
-	games []int
+	stats  TrackedStats
 }
 
 type teamMap map[int]RankerTeam
 type gameMap map[int]RankerGame
+type week struct {
+	week  int
+	games []int
+}
 type weekList []week
-type weightedWeekMap []map[int]*team
 
-func (wkMap *weightedWeekMap) copyWeek(week int, newWeek int) map[int]*team {
-	mapCopy := map[int]*team{}
+type wkTeamMap map[int]*team
 
-	for k, v := range (*wkMap)[week] {
-		gamesCopy := make([]int, len(v.games))
-		copy(gamesCopy, v.games)
+type TeamAndRank struct {
+	Id     int
+	Rank   int
+	Weight int
+}
+type weightedWeekMap []wkTeamMap
 
-		mapCopy[k] = &team{
-			id:     v.id,
-			week:   newWeek,
-			rank:   v.rank,
-			weight: v.weight,
-			games:  gamesCopy,
-			stats:  v.stats,
-		}
-	}
-
-	return mapCopy
+type rankerParams = struct {
+	tms      []*team
+	sortFn   (func(i, j int) bool)
+	accessor func(*team) int
+	assigner func(*team, int)
 }
 
-type RankedSeason struct {
-	teams         teamMap
-	games         gameMap
-	weeks         weekList
-	weightedWeeks weightedWeekMap
+/* Fns */
+func Rank(
+	teams []RankerTeam,
+	games []RankerGame,
+) RankedSeason {
+	szn := BuildSeason(teams, games)
+	szn.CompileSeasonStats()
+	szn.CalculateStatRankings()
+	return szn
 }
 
 func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
@@ -143,8 +144,29 @@ func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
 	}
 }
 
-// Also will take in ranking params
-func CompileSeasonStats(rs *RankedSeason) {
+/* Ranking Methods */
+func (rs *RankedSeason) CompileSeasonStats() {
+
+	var UpdateWeightedTeam = func(currTeam RankerStat, oppTeam RankerStat, tm *team) {
+		if currTeam.Id != tm.id {
+			log.Panicf("Invalid team ids (%v-%v)", currTeam.Id, tm.id)
+		}
+
+		//Points
+		tm.stats.PF.Val += currTeam.Points
+		tm.stats.PA.Val += oppTeam.Points
+
+		//Yards
+		tm.stats.TotalOffense.Val += currTeam.TotalYards
+		tm.stats.TotalDefense.Val += oppTeam.TotalYards
+
+		//W/L
+		if currTeam.Points > oppTeam.Points {
+			tm.stats.Wins.Val++
+		} else {
+			tm.stats.Losses.Val++
+		}
+	}
 
 	for _, wk := range rs.weeks {
 
@@ -179,120 +201,222 @@ func CompileSeasonStats(rs *RankedSeason) {
 			//Home team stats
 			if wtHome, ok := rs.weightedWeeks[wk.week][homeTeam.Id]; ok {
 				UpdateWeightedTeam(homeTeam, awayTeam, wtHome)
+				wtHome.games = append(wtHome.games, gmId)
 				rs.weightedWeeks[wk.week][homeTeam.Id] = wtHome
+
 			}
 
 			//away team stats
 			if wtAway, ok := rs.weightedWeeks[wk.week][awayTeam.Id]; ok {
 				UpdateWeightedTeam(awayTeam, homeTeam, wtAway)
+				wtAway.games = append(wtAway.games, gmId)
 				rs.weightedWeeks[wk.week][awayTeam.Id] = wtAway
 			}
 		}
 	}
 }
 
-func UpdateWeightedTeam(currTeam RankerStat, oppTeam RankerStat, tm *team) {
-	if currTeam.Id != tm.id {
-		log.Panicf("Invalid team ids (%v-%v)", currTeam.Id, tm.id)
-	}
-
-	//Points
-	tm.stats.PF.Val += currTeam.Points
-	tm.stats.PA.Val += oppTeam.Points
-
-	//Yards
-	tm.stats.TotalOffense.Val += currTeam.TotalYards
-	tm.stats.TotalDefense.Val += oppTeam.TotalYards
-
-	//W/L
-	if currTeam.Points > oppTeam.Points {
-		tm.stats.Wins.Val++
-	} else {
-		tm.stats.Losses.Val++
-	}
-}
-
-/*
-Sort stats by rank in sep slices (this needs to be held in its own ds, and returned)
-//TODO HANDLE TIED STATS (will req a fn)
-*/
-
-func CalculateStatRankings(rs *RankedSeason) {
+func (rs *RankedSeason) CalculateStatRankings() {
 
 	//iterate through weightedWeeks and sort stats assign rank
 	for _, wk := range rs.weightedWeeks {
-		tms := make([]*team, len(wk))
-		for _, v := range wk {
-			tms = append(tms, v)
+
+		tms := wk.toSlice()
+
+		rankConfigs := []rankerParams{
+			//wins
+			makeRanker(
+				tms,
+				func(t *team) int { return t.stats.Wins.Val },
+				func(t *team, i int) { t.stats.Wins.Rank = i },
+				true,
+			),
+			// off
+			makeRanker(
+				tms,
+				func(t *team) int { return t.stats.TotalOffense.Val },
+				func(t *team, i int) { t.stats.TotalOffense.Rank = i },
+				true,
+			),
+			//pf
+			makeRanker(tms,
+				func(t *team) int { return t.stats.PF.Val },
+				func(t *team, i int) { t.stats.PF.Rank = i },
+				true,
+			),
+			/* Descending stats */
+
+			//losses
+			makeRanker(
+				tms,
+				func(t *team) int { return t.stats.Losses.Val },
+				func(t *team, i int) { t.stats.Losses.Rank = i },
+				false,
+			),
+			//def
+			makeRanker(
+				tms,
+				func(t *team) int { return t.stats.TotalDefense.Val },
+				func(t *team, i int) { t.stats.TotalDefense.Rank = i },
+				false,
+			),
+			//PA
+			makeRanker(
+				tms,
+				func(t *team) int { return t.stats.PA.Val },
+				func(t *team, i int) { t.stats.PA.Rank = i },
+				false,
+			),
 		}
 
-		type rankerParams = struct {
-			sortFn       (func(i, j int) bool)
-			statAccessor func(*team) *WeightedStat
+		for _, cfg := range rankConfigs {
+			rankStat(cfg)
 		}
 
-		rankStat := func(params rankerParams) {
-			sort.Slice(tms, params.sortFn)
-
-			rankIndex := 1
-			var currVal int
-
-			firstTmFlag := true
-
-			for i, tm := range tms {
-
-				stat := params.statAccessor(tm)
-				val := stat.Val
-				if firstTmFlag {
-					currVal = val
-					firstTmFlag = false
-				}
-
-				if val != currVal {
-					rankIndex = i + 1
-					currVal = val
-				}
-				stat.Rank = rankIndex
+		//sum weights
+		for _, tms := range rs.weightedWeeks {
+			for _, tm := range tms {
+				tm.sumWeights()
 			}
 		}
-		//Sort by stats and assign rank
 
-		//wins
-		rankStat(rankerParams{
-			sortFn:       func(a, b int) bool { return tms[a].stats.Wins.Val > tms[b].stats.Wins.Val },
-			statAccessor: func(t *team) *WeightedStat { return &t.stats.Wins },
-		})
+		// Assign overall ranking
+		for _, tms := range rs.weightedWeeks {
+			tmSlice := tms.toSlice()
 
-		// //off
-		rankStat(rankerParams{
-			sortFn:       func(a, b int) bool { return tms[a].stats.TotalOffense.Val > tms[b].stats.TotalOffense.Val },
-			statAccessor: func(t *team) *WeightedStat { return &t.stats.TotalOffense },
-		})
+			sort.Slice(tmSlice, func(i, j int) bool {
+				return tmSlice[i].weight < tmSlice[j].weight
+			})
 
-		//pf
-		rankStat(rankerParams{
-			sortFn:       func(a, b int) bool { return tms[a].stats.PF.Val > tms[b].stats.PF.Val },
-			statAccessor: func(t *team) *WeightedStat { return &t.stats.PF },
-		})
+			rankStat(
+				makeRanker(
+					tmSlice,
+					func(t *team) int { return t.weight },
+					func(t *team, i int) { t.rank = i },
+					false,
+				))
+		}
+	}
+}
 
-		/* Descending stats */
+/* Helper Methods */
+func (wk *wkTeamMap) toSlice() []*team {
+	tms := make([]*team, len(*wk))
+	i := 0
+	for _, v := range *wk {
+		tms[i] = v
+		i++
+	}
+	return tms
+}
 
-		//losess
-		rankStat(rankerParams{
-			sortFn:       func(a, b int) bool { return tms[a].stats.Losses.Val < tms[b].stats.Losses.Val },
-			statAccessor: func(t *team) *WeightedStat { return &t.stats.Losses },
-		})
+func (wk *wkTeamMap) GetRankings() []TeamAndRank {
+	tmPtrs := wk.toSlice()
+	tms := make([]TeamAndRank, len(tmPtrs))
+	for i, t := range tmPtrs {
+		tms[i] = TeamAndRank{
+			Id:     t.id,
+			Rank:   t.rank,
+			Weight: t.weight,
+		}
+	}
 
-		//def
-		rankStat(rankerParams{
-			sortFn:       func(a, b int) bool { return tms[a].stats.TotalDefense.Val < tms[b].stats.TotalDefense.Val },
-			statAccessor: func(t *team) *WeightedStat { return &t.stats.TotalDefense },
-		})
+	sort.Slice(tms, func(i, j int) bool {
+		t1 := tms[i].Rank
+		t2 := tms[j].Rank
 
-		//PA
-		rankStat(rankerParams{
-			sortFn:       func(a, b int) bool { return tms[a].stats.PA.Val < tms[b].stats.PA.Val },
-			statAccessor: func(t *team) *WeightedStat { return &t.stats.PA },
-		})
+		if t1 == 0 || t2 == 0 {
+			//TODO abstract error to avoid panic
+			log.Panicln("Team rank is 0, indicating teams have yet to be ranked")
+		}
+
+		return t1 < t2
+	})
+
+	return tms
+}
+
+func (wkMap *weightedWeekMap) copyWeek(week int, newWeek int) map[int]*team {
+	mapCopy := map[int]*team{}
+
+	for k, v := range (*wkMap)[week] {
+		gamesCopy := make([]int, len(v.games))
+		copy(gamesCopy, v.games)
+
+		mapCopy[k] = &team{
+			id:     v.id,
+			week:   newWeek,
+			rank:   v.rank,
+			weight: v.weight,
+			games:  gamesCopy,
+			stats:  v.stats,
+		}
+	}
+
+	return mapCopy
+}
+
+/* TODO will need to add weight param */
+func (tm *team) sumWeights() {
+	wt := 0
+	wt += tm.stats.Wins.Rank
+	wt += tm.stats.Losses.Rank
+	wt += tm.stats.TotalOffense.Rank
+	wt += tm.stats.TotalDefense.Rank
+	wt += tm.stats.PF.Rank
+	wt += tm.stats.PA.Rank
+
+	tm.weight = wt
+}
+
+/* Fns */
+
+func rankStat(params rankerParams) {
+	tms := params.tms
+	sort.Slice(tms, params.sortFn)
+
+	rankIndex := 1
+	var currVal int
+
+	firstTmFlag := true
+
+	for i, tm := range tms {
+
+		val := params.accessor(tm)
+		if firstTmFlag {
+			currVal = val
+			firstTmFlag = false
+		}
+
+		if val != currVal {
+			rankIndex = i + 1
+			currVal = val
+		}
+		params.assigner(tm, rankIndex)
+	}
+}
+
+func makeRanker(
+	tms []*team,
+	accessor func(*team) int,
+	assigner func(*team, int),
+	desc bool,
+) rankerParams {
+	return rankerParams{
+		tms:      tms,
+		sortFn:   sortTeams(tms, accessor, desc),
+		accessor: accessor,
+		assigner: assigner,
+	}
+}
+
+func sortTeams(tms []*team, accessor func(t *team) int, desc bool) func(i, j int) bool {
+	return func(i, j int) bool {
+		a := accessor(tms[i])
+		b := accessor(tms[j])
+		if desc {
+			return a > b
+		}
+		return a < b
 	}
 }
