@@ -11,6 +11,7 @@ import (
 const espnSeasonDateFormat = "2006-01-02T15:04Z"
 const espnQueryDateFormat = "20060102"
 
+/* Top Level DS for Season */
 type Season struct {
 	Year      int
 	Schedules SeasonSchedules

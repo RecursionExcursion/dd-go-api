@@ -9,15 +9,8 @@ import (
 )
 
 type cfbrRoutes = struct {
-	// cfbApi cfbApi
 	espn espnApi
 }
-
-// type cfbApi struct {
-// 	teams func(year int) string
-// 	games func(division string, year int, seasonType string) string
-// 	stats func(year int, week int, seasonType string) string
-// }
 
 type espnApi struct {
 	groups   func() string
@@ -30,29 +23,6 @@ type espnApi struct {
 
 func routeBuilder() cfbrRoutes {
 	return cfbrRoutes{
-		// cfbApi: cfbApi{
-		// 	teams: func(year int) string {
-		// 		return fmt.Sprintf("%v%v?year=%v", baseRoute, teams, year)
-		// 	},
-
-		// 	games: func(division string, year int, seasonType string) string {
-		// 		return fmt.Sprintf("%v%v?year=%v&division=%v&seasonType=%v",
-		// 			baseRoute,
-		// 			games,
-		// 			year,
-		// 			division,
-		// 			seasonType)
-		// 	},
-
-		// 	stats: func(year, week int, seasonType string) string {
-		// 		return fmt.Sprintf("%v%v?year=%v&week=%v&seasonType=%v",
-		// 			baseRoute,
-		// 			stats,
-		// 			year,
-		// 			week,
-		// 			seasonType)
-		// 	},
-		// },
 		espn: espnApi{
 			groups: func() string {
 				return fmt.Sprintf("%v%v", espnBase, espnGroups)
@@ -83,9 +53,6 @@ func fetchEspnTeam(teamId int) (ESPNTeamWrapper, error) {
 	return fetchDataToT[ESPNTeamWrapper](r)
 }
 
-// func fetchEspnGroups() (ESPNGroups, error) {
-// }
-
 func fetchEspnSeason(date string) (ESPNSeason, error) {
 	r := routeBuilder().espn.season(date)
 	return fetchDataToT[ESPNSeason](r)
@@ -95,21 +62,6 @@ func fetchEspnStats(eventId int) (ESPNCfbGame, error) {
 	r := routeBuilder().espn.stats(eventId)
 	return fetchDataToT[ESPNCfbGame](r)
 }
-
-// func fetchTeams(year int) ([]Team, error) {
-// 	r := routeBuilder().teams(year)
-// 	return fetchDataToT[[]Team](r)
-// }
-
-// func fetchGames(division string, year int, seasonType string) ([]Game, error) {
-// 	r := routeBuilder().games(division, year, seasonType)
-// 	return fetchDataToT[[]Game](r)
-// }
-
-// func fetchGameStats(year int, week int, seasonType string) ([]GameStats, error) {
-// 	r := routeBuilder().stats(year, week, seasonType)
-// 	return fetchDataToT[[]GameStats](r)
-// }
 
 func fetchDataToT[T any](route string) (T, error) {
 	r, err := reqBuilder(route)

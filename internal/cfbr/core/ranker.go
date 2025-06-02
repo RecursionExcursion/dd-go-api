@@ -8,6 +8,8 @@ import (
 /* =====Types==== */
 
 /* External param types */
+
+/* Top level Ranking DS */
 type RankerTeam struct {
 	Id int
 }
@@ -86,6 +88,7 @@ type rankerParams = struct {
 }
 
 /* Fns */
+/* Top Level Ranking Fn */
 func Rank(
 	teams []RankerTeam,
 	games []RankerGame,

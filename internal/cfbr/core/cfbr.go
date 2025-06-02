@@ -1,43 +1,9 @@
 package core
 
-// import (
-// 	"errors"
-// 	"fmt"
-// )
-
-// type CompleteGame struct {
-// 	Id        int
-// 	Game      Game
-// 	GameStats GameStats
-// }
-
-// func (cg *CompleteGame) getTeam(id int) (currTeam GameTeam, oppTeam GameTeam, err error) {
-
-// 	oppAssignedFlag := false
-
-// 	for _, t := range cg.GameStats.Teams {
-// 		if t.SchoolId == id {
-// 			currTeam = t
-// 		} else {
-// 			if oppAssignedFlag == true {
-// 				err = fmt.Errorf("Team %v not found", id)
-// 			}
-// 			oppTeam = t
-// 			oppAssignedFlag = true
-// 		}
-// 	}
-
-// 	return currTeam, oppTeam, err
-// }
-
-// type CFBRSchool struct {
-// 	Team  Team
-// 	Games []int
-// }
-
-// /* CFBRSeason- This is the main data structure for this module
-// *
-//  */
+import (
+	"fmt"
+	"strconv"
+)
 
 type SerializeableCompressedSeason struct {
 	Id               string `json:"id"`
@@ -46,46 +12,95 @@ type SerializeableCompressedSeason struct {
 	CompressedSeason string `json:"season"`
 }
 
-// type GameMap = map[string]CompleteGame
-// type SchoolMap = map[string]CFBRSchool
+func MapToRanker(szn Season) (tms []RankerTeam, gms []RankerGame, err error) {
 
-// type CFBRSeason struct {
-// 	Year     int
-// 	Division string
-// 	Schools  SchoolMap
-// 	Games    GameMap
-// }
+	//Map szsn to ds's
+	tms = make([]RankerTeam, len(szn.Teams))
+	i := 0
+	for _, tm := range szn.Teams {
+		id, err := strconv.Atoi(tm.Id)
+		if err != nil {
+			return tms, gms, fmt.Errorf("could not cast tm id (%v) to int", tm.Id)
+		}
+		tms[i] = RankerTeam{
+			Id: id,
+		}
+		i++
+	}
 
-// func EmptySeason() CFBRSeason {
-// 	return CFBRSeason{
-// 		Schools: make(SchoolMap),
-// 	}
-// }
+	gms = make([]RankerGame, len(szn.Games))
+	i = 0
 
-// // First accept args (stat weights)/(year)
-// func Create(divsion string, year int) (CFBRSeason, error) {
-// 	// season, err := collectCfbSeasonData(divsion, year)
-// 	// if err != nil {
-// 	// 	return CFBRSeason{}, err
-// 	// }
-// 	// return season, nil
-// 	return CFBRSeason{}, nil
-// }
+	for _, g := range szn.Games {
 
-// /* CFBRSeason- Util fns */
+		//cast id
+		id, err := strconv.Atoi(g.Header.Id)
+		if err != nil {
+			return tms, gms, err
+		}
 
-// func (c *CFBRSeason) FindSchoolById(id int) (s CFBRSchool, err error) {
-// 	s, ok := c.Schools[fmt.Sprint(id)]
-// 	if !ok {
-// 		err = errors.New("school not found")
-// 	}
-// 	return s, err
-// }
+		homeStats := RankerStat{}
+		awayStats := RankerStat{}
 
-// func (c *CFBRSeason) FindGameById(id int) (cg CompleteGame, err error) {
-// 	cg, ok := c.Games[fmt.Sprint(id)]
-// 	if !ok {
-// 		err = errors.New("game not found")
-// 	}
-// 	return cg, err
-// }
+		for _, tm := range g.Boxscore.Teams {
+			if tm.HomeAway == "home" {
+				homeStats, err = tmToStat(tm, g)
+				if err != nil {
+					return tms, gms, err
+				}
+			} else if tm.HomeAway == "away" {
+				awayStats, err = tmToStat(tm, g)
+				if err != nil {
+					return tms, gms, err
+				}
+			} else {
+				return tms, gms, fmt.Errorf("homeAway not found in game (%v)", g.Header.Id)
+			}
+		}
+
+		gms[i] = RankerGame{
+			Id:   id,
+			Week: g.Header.Week,
+			Stats: RankerGameStats{
+				Home: homeStats,
+				Away: awayStats,
+			},
+		}
+		i++
+	}
+
+	return tms, gms, err
+}
+
+func tmToStat(tm Team, gm ESPNCfbGame) (rs RankerStat, err error) {
+
+	rs = RankerStat{}
+
+	id, err := strconv.Atoi(tm.Team.Id)
+	if err != nil {
+		return rs, err
+	}
+	rs.Id = id
+
+	for _, st := range tm.Statistics {
+		if st.Name == totalYardsStatKey {
+			ty, err := strconv.Atoi(st.DisplayValue)
+			if err != nil {
+				return rs, fmt.Errorf("could not cast total yards to int for game (%v)", gm.Header.Id)
+			}
+			rs.TotalYards = ty
+		}
+	}
+
+	for _, c := range gm.Header.Competitions[0].Competitors {
+		if c.Id == tm.Team.Id {
+			score, err := strconv.Atoi(c.Score)
+			if err != nil {
+				return rs, err
+			}
+			rs.Points = score
+		}
+	}
+
+	return rs, err
+}

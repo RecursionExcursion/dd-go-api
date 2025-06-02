@@ -140,7 +140,9 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Computation complete")
 
-	api.Response.Ok(w, szn, nil)
+	tms, gms, err := core.MapToRanker(szn)
+
+	api.Response.Ok(w, []any{tms, gms}, nil)
 }
 
 var handleDeleteCfbrData = func(w http.ResponseWriter, r *http.Request) {
