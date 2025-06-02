@@ -98,35 +98,35 @@ func TestBuildSeason(t *testing.T) {
 	szn := BuildSeason(mockTeams, mockGames)
 
 	//test all teams were added, t4 is lower div so not checked
-	for k, v := range szn.teams {
+	for k, v := range szn.Teams {
 		if !(k == 1 || k == 2 || k == 3) {
 			t.Errorf("Invalid team id (%v)", k)
 		}
-		if szn.teams[k] != v {
+		if szn.Teams[k] != v {
 			t.Errorf("Team id (%v) key (%v) mismatch", v, k)
 		}
 	}
 
 	//test all games were added
-	for k := range szn.games {
+	for k := range szn.Games {
 		if !(k == 11 || k == 12 || k == 13 || k == 14) {
 			t.Errorf("Invalid game id (%v)", k)
 		}
 	}
 
 	//test week list
-	wkList := szn.weeks
+	wkList := szn.Weeks
 	if len(wkList) != 3 {
 		t.Errorf("Week list is of len %v instead of %v", len(wkList), 3)
 	}
-	if len(wkList[0].games) > 0 {
-		t.Errorf("Week 0 should have 0 entires but instead has %v", wkList[0].games)
+	if len(wkList[0].Games) > 0 {
+		t.Errorf("Week 0 should have 0 entires but instead has %v", wkList[0].Games)
 	}
-	if len(wkList[1].games) != 2 {
-		t.Errorf("Week 1 should have 2 entires but instead has %v", wkList[1].games)
+	if len(wkList[1].Games) != 2 {
+		t.Errorf("Week 1 should have 2 entires but instead has %v", wkList[1].Games)
 	}
-	if len(wkList[2].games) != 2 {
-		t.Errorf("Week 2 should have 2 entires but instead has %v", wkList[2].games)
+	if len(wkList[2].Games) != 2 {
+		t.Errorf("Week 2 should have 2 entires but instead has %v", wkList[2].Games)
 	}
 
 	// log.Println(szn)
@@ -142,9 +142,9 @@ type expectedStats struct {
 }
 
 func TestCompileSeasonStats(t *testing.T) {
-	var checkStats = func(expected expectedStats, tm *team) {
-		tmId := tm.id
-		stats := tm.stats
+	var checkStats = func(expected expectedStats, tm *Rteam) {
+		tmId := tm.Id
+		stats := tm.Stats
 
 		if stats.Wins.Val != expected.wins {
 			t.Errorf("Team (%v) expected %v wins but had %v", tmId, expected.wins, stats.Wins)
@@ -183,7 +183,7 @@ func TestCompileSeasonStats(t *testing.T) {
 		pf:   7,
 		pa:   5,
 	},
-		rs.weightedWeeks[1][1],
+		rs.WeightedWeeks[1][1],
 	)
 
 	//check tm1 wk2
@@ -195,7 +195,7 @@ func TestCompileSeasonStats(t *testing.T) {
 		pf:   14,
 		pa:   15,
 	},
-		rs.weightedWeeks[2][1],
+		rs.WeightedWeeks[2][1],
 	)
 
 	//check tm3 wk1
@@ -207,7 +207,7 @@ func TestCompileSeasonStats(t *testing.T) {
 		pf:   10,
 		pa:   0,
 	},
-		rs.weightedWeeks[1][3],
+		rs.WeightedWeeks[1][3],
 	)
 
 	//check tm3 wk2
@@ -219,7 +219,7 @@ func TestCompileSeasonStats(t *testing.T) {
 		pf:   20,
 		pa:   7,
 	},
-		rs.weightedWeeks[2][3],
+		rs.WeightedWeeks[2][3],
 	)
 }
 
@@ -238,26 +238,26 @@ func TestCalculateStatRankings(t *testing.T) {
 		log.Print("\n\n")
 		log.Println("Mapped team weights")
 		log.Println("Week 1")
-		for _, v := range rs.weightedWeeks[1] {
+		for _, v := range rs.WeightedWeeks[1] {
 			log.Println(*v)
 		}
 		log.Println()
 
 		log.Println("Week 2")
-		for _, v := range rs.weightedWeeks[2] {
+		for _, v := range rs.WeightedWeeks[2] {
 			log.Println(*v)
 		}
 		log.Print("\n\n")
 	}
 
-	t3w2 := rs.weightedWeeks[2][3]
-	checkRank(1, t3w2.stats.Wins.Rank)
-	checkRank(1, t3w2.stats.TotalOffense.Rank)
+	t3w2 := rs.WeightedWeeks[2][3]
+	checkRank(1, t3w2.Stats.Wins.Rank)
+	checkRank(1, t3w2.Stats.TotalOffense.Rank)
 
-	t1w2 := rs.weightedWeeks[2][1]
-	checkRank(2, t1w2.stats.TotalOffense.Rank)
+	t1w2 := rs.WeightedWeeks[2][1]
+	checkRank(2, t1w2.Stats.TotalOffense.Rank)
 
-	for _, w := range rs.weightedWeeks {
+	for _, w := range rs.WeightedWeeks {
 		log.Println(w.GetRankings())
 	}
 }
