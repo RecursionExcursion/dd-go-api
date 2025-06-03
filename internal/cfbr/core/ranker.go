@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"sort"
 )
 
@@ -40,6 +41,7 @@ type RankerGame struct {
 	Id    int
 	Week  int
 	Stats RankerGameStats
+	Type  int
 }
 
 /* Types for internal calcs */
@@ -48,6 +50,8 @@ type WeightedStat struct {
 	Val  int
 }
 
+// Consider stat map for dynamic stats
+// Could have options "damage opposition"
 type TrackedStats struct {
 	Wins         WeightedStat
 	Losses       WeightedStat
@@ -58,7 +62,7 @@ type TrackedStats struct {
 }
 
 // TODO dont forget PI and SS
-type Rteam struct {
+type RankableTeam struct {
 	Id     int
 	Week   int
 	Rank   int
@@ -76,7 +80,7 @@ type Week struct {
 
 type WeekList []Week
 
-type WkTeamMap map[int]*Rteam
+type WkTeamMap map[int]*RankableTeam
 
 type TeamAndRank struct {
 	Id     int
@@ -87,10 +91,10 @@ type TeamAndRank struct {
 type WeightedWeekMap []WkTeamMap
 
 type rankerParams = struct {
-	tms      []*Rteam
+	tms      []*RankableTeam
 	sortFn   (func(i, j int) bool)
-	accessor func(*Rteam) int
-	assigner func(*Rteam, int)
+	accessor func(*RankableTeam) int
+	assigner func(*RankableTeam, int)
 }
 
 /* Fns */
@@ -152,36 +156,13 @@ func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
 /* Ranking Methods */
 func (rs *RankedSeason) CompileSeasonStats() error {
 
-	var UpdateWeightedTeam = func(currTeam RankerStat, oppTeam RankerStat, tm *Rteam) error {
-		if currTeam.Id != tm.Id {
-			return fmt.Errorf("invalid team ids (%v-%v)", currTeam.Id, tm.Id)
-		}
-
-		//Points
-		tm.Stats.PF.Val += currTeam.Points
-		tm.Stats.PA.Val += oppTeam.Points
-
-		//Yards
-		tm.Stats.TotalOffense.Val += currTeam.TotalYards
-		tm.Stats.TotalDefense.Val += oppTeam.TotalYards
-
-		//W/L
-		if currTeam.Points > oppTeam.Points {
-			tm.Stats.Wins.Val++
-		} else {
-			tm.Stats.Losses.Val++
-		}
-
-		return nil
-	}
-
 	for _, wk := range rs.Weeks {
 
 		if len(rs.WeightedWeeks) == 0 {
 			//Create first week if none exist
-			wkMap := make(map[int]*Rteam)
+			wkMap := make(map[int]*RankableTeam)
 			for _, tm := range rs.Teams {
-				newTm := Rteam{
+				newTm := RankableTeam{
 					Id:   tm.Id,
 					Week: wk.Week,
 				}
@@ -210,7 +191,7 @@ func (rs *RankedSeason) CompileSeasonStats() error {
 
 			//Home team stats
 			if wtHome, ok := rs.WeightedWeeks[wk.Week][homeTeam.Id]; ok {
-				err := UpdateWeightedTeam(homeTeam, awayTeam, wtHome)
+				err := UpdateWeightedTeam(wtHome, gm)
 				if err != nil {
 					return err
 				}
@@ -221,7 +202,7 @@ func (rs *RankedSeason) CompileSeasonStats() error {
 
 			//away team stats
 			if wtAway, ok := rs.WeightedWeeks[wk.Week][awayTeam.Id]; ok {
-				err := UpdateWeightedTeam(awayTeam, homeTeam, wtAway)
+				err := UpdateWeightedTeam(wtAway, gm)
 				if err != nil {
 					return err
 				}
@@ -244,21 +225,21 @@ func (rs *RankedSeason) CalculateStatRankings() {
 			//wins
 			makeRanker(
 				tms,
-				func(t *Rteam) int { return t.Stats.Wins.Val },
-				func(t *Rteam, i int) { t.Stats.Wins.Rank = i },
+				func(t *RankableTeam) int { return t.Stats.Wins.Val },
+				func(t *RankableTeam, i int) { t.Stats.Wins.Rank = i },
 				true,
 			),
 			// off
 			makeRanker(
 				tms,
-				func(t *Rteam) int { return t.Stats.TotalOffense.Val },
-				func(t *Rteam, i int) { t.Stats.TotalOffense.Rank = i },
+				func(t *RankableTeam) int { return t.Stats.TotalOffense.Val },
+				func(t *RankableTeam, i int) { t.Stats.TotalOffense.Rank = i },
 				true,
 			),
 			//pf
 			makeRanker(tms,
-				func(t *Rteam) int { return t.Stats.PF.Val },
-				func(t *Rteam, i int) { t.Stats.PF.Rank = i },
+				func(t *RankableTeam) int { return t.Stats.PF.Val },
+				func(t *RankableTeam, i int) { t.Stats.PF.Rank = i },
 				true,
 			),
 			/* Descending stats */
@@ -266,22 +247,22 @@ func (rs *RankedSeason) CalculateStatRankings() {
 			//losses
 			makeRanker(
 				tms,
-				func(t *Rteam) int { return t.Stats.Losses.Val },
-				func(t *Rteam, i int) { t.Stats.Losses.Rank = i },
+				func(t *RankableTeam) int { return t.Stats.Losses.Val },
+				func(t *RankableTeam, i int) { t.Stats.Losses.Rank = i },
 				false,
 			),
 			//def
 			makeRanker(
 				tms,
-				func(t *Rteam) int { return t.Stats.TotalDefense.Val },
-				func(t *Rteam, i int) { t.Stats.TotalDefense.Rank = i },
+				func(t *RankableTeam) int { return t.Stats.TotalDefense.Val },
+				func(t *RankableTeam, i int) { t.Stats.TotalDefense.Rank = i },
 				false,
 			),
 			//PA
 			makeRanker(
 				tms,
-				func(t *Rteam) int { return t.Stats.PA.Val },
-				func(t *Rteam, i int) { t.Stats.PA.Rank = i },
+				func(t *RankableTeam) int { return t.Stats.PA.Val },
+				func(t *RankableTeam, i int) { t.Stats.PA.Rank = i },
 				false,
 			),
 		}
@@ -308,8 +289,8 @@ func (rs *RankedSeason) CalculateStatRankings() {
 			rankStat(
 				makeRanker(
 					tmSlice,
-					func(t *Rteam) int { return t.Weight },
-					func(t *Rteam, i int) { t.Rank = i },
+					func(t *RankableTeam) int { return t.Weight },
+					func(t *RankableTeam, i int) { t.Rank = i },
 					false,
 				))
 		}
@@ -317,8 +298,8 @@ func (rs *RankedSeason) CalculateStatRankings() {
 }
 
 /* Helper Methods */
-func (wk *WkTeamMap) toSlice() []*Rteam {
-	tms := make([]*Rteam, len(*wk))
+func (wk *WkTeamMap) toSlice() []*RankableTeam {
+	tms := make([]*RankableTeam, len(*wk))
 	i := 0
 	for _, v := range *wk {
 		tms[i] = v
@@ -353,17 +334,17 @@ func (wk *WkTeamMap) GetRankings() ([]TeamAndRank, error) {
 	return tms, nil
 }
 
-func (wkMap *WeightedWeekMap) copyWeek(week int, newWeek int) (map[int]*Rteam, error) {
+func (wkMap *WeightedWeekMap) copyWeek(week int, newWeek int) (map[int]*RankableTeam, error) {
 	if week < 0 {
 		return nil, errors.New("week cannot be less than 0")
 	}
-	mapCopy := map[int]*Rteam{}
+	mapCopy := map[int]*RankableTeam{}
 
 	for k, v := range (*wkMap)[week] {
 		gamesCopy := make([]int, len(v.Games))
 		copy(gamesCopy, v.Games)
 
-		mapCopy[k] = &Rteam{
+		mapCopy[k] = &RankableTeam{
 			Id:     v.Id,
 			Week:   newWeek,
 			Rank:   v.Rank,
@@ -377,7 +358,7 @@ func (wkMap *WeightedWeekMap) copyWeek(week int, newWeek int) (map[int]*Rteam, e
 }
 
 /* TODO will need to add weight param */
-func (tm *Rteam) sumWeights() {
+func (tm *RankableTeam) sumWeights() {
 	wt := 0
 	wt += tm.Stats.Wins.Rank
 	wt += tm.Stats.Losses.Rank
@@ -387,6 +368,13 @@ func (tm *Rteam) sumWeights() {
 	wt += tm.Stats.PA.Rank
 
 	tm.Weight = wt
+}
+
+func (rt *RankerTeam) teamToRankable() RankableTeam {
+	return RankableTeam{
+		Id:    rt.Id,
+		Games: []int{},
+	}
 }
 
 /* Fns */
@@ -417,9 +405,9 @@ func rankStat(params rankerParams) {
 }
 
 func makeRanker(
-	tms []*Rteam,
-	accessor func(*Rteam) int,
-	assigner func(*Rteam, int),
+	tms []*RankableTeam,
+	accessor func(*RankableTeam) int,
+	assigner func(*RankableTeam, int),
 	desc bool,
 ) rankerParams {
 	return rankerParams{
@@ -430,7 +418,7 @@ func makeRanker(
 	}
 }
 
-func sortTeams(tms []*Rteam, accessor func(t *Rteam) int, desc bool) func(i, j int) bool {
+func sortTeams(tms []*RankableTeam, accessor func(t *RankableTeam) int, desc bool) func(i, j int) bool {
 	return func(i, j int) bool {
 		a := accessor(tms[i])
 		b := accessor(tms[j])
@@ -439,4 +427,295 @@ func sortTeams(tms []*Rteam, accessor func(t *Rteam) int, desc bool) func(i, j i
 		}
 		return a < b
 	}
+}
+
+////////////////////////////////////////////////////////////////////////
+
+type SeasonMap map[int]map[int]*RankableTeam
+
+func RankSeasonProto(tms []RankerTeam, gms []RankerGame) SeasonMap {
+	//create collections
+	tmMap := makeTeamMap(tms)
+	// sznMap := make(SeasonMap)
+	sznTypeMap := make(map[int]SeasonMap)
+
+	//iterate games and add stats to sznMap
+	for _, g := range gms {
+
+		tp := g.Type
+		//season type
+		sznMap, ok := sznTypeMap[tp]
+		if !ok {
+			sznTypeMap[tp] = make(SeasonMap)
+			sznMap = sznTypeMap[tp]
+		}
+
+		//week
+		wk := g.Week
+
+		//check map
+		wkMap, ok := sznMap[wk]
+		if !ok {
+			sznMap[wk] = makeRankableTeamMap(tmMap, wk)
+			wkMap = sznMap[wk]
+		}
+
+		if ht, ok := wkMap[g.Stats.Home.Id]; ok {
+			UpdateWeightedTeam(ht, g)
+		}
+		if at, ok := wkMap[g.Stats.Away.Id]; ok {
+			UpdateWeightedTeam(at, g)
+		}
+	}
+	sznMap := squashSeasonMaps(sznTypeMap)
+
+	//squash stats
+	squashStats(sznMap)
+	calcWeights(sznMap)
+
+	return sznMap
+}
+
+func makeTeamMap(tms []RankerTeam) teamMap {
+	tmMap := make(teamMap)
+	for _, tm := range tms {
+		tmMap[tm.Id] = tm
+	}
+	return tmMap
+}
+
+func makeRankableTeamMap(tmMap teamMap, wk int) map[int]*RankableTeam {
+
+	weekMap := make(map[int]*RankableTeam)
+
+	for id, tm := range tmMap {
+		val := tm.teamToRankable()
+		val.Week = wk
+		weekMap[id] = &val
+	}
+
+	return weekMap
+}
+
+func UpdateWeightedTeam(tm *RankableTeam, gm RankerGame) error {
+	tmId := tm.Id
+
+	currTeam := RankerStat{}
+	oppTeam := RankerStat{}
+
+	if gm.Stats.Home.Id == tmId {
+		currTeam = gm.Stats.Home
+		oppTeam = gm.Stats.Away
+	} else if gm.Stats.Away.Id == tmId {
+		currTeam = gm.Stats.Away
+		oppTeam = gm.Stats.Home
+	} else {
+		return fmt.Errorf("Team %v not found in game %v", tmId, gm.Id)
+	}
+
+	if currTeam.Id != tm.Id {
+		return fmt.Errorf("invalid team ids (%v-%v)", currTeam.Id, tm.Id)
+	}
+
+	//Points
+	tm.Stats.PF.Val += currTeam.Points
+	tm.Stats.PA.Val += oppTeam.Points
+
+	//Yards
+	tm.Stats.TotalOffense.Val += currTeam.TotalYards
+	tm.Stats.TotalDefense.Val += oppTeam.TotalYards
+
+	//W/L
+	if currTeam.Points > oppTeam.Points {
+		tm.Stats.Wins.Val++
+	} else {
+		tm.Stats.Losses.Val++
+	}
+
+	tm.Games = append(tm.Games, gm.Id)
+
+	return nil
+}
+
+func squashStats(sznMap SeasonMap) {
+
+	keys := []int{}
+
+	for k := range sznMap {
+		keys = append(keys, k)
+	}
+
+	slices.Sort(keys)
+
+	prev := -1
+	for _, k := range keys {
+		//grab week
+		wk := sznMap[k]
+
+		//check if its the first week, if so skip and iterate
+		if prev != -1 {
+			prevWk := sznMap[prev]
+
+			for _, tm := range wk {
+				prevWkTm := prevWk[tm.Id]
+
+				//append stats
+				tm.Stats.Wins.Val += prevWkTm.Stats.Wins.Val
+				tm.Stats.Losses.Val += prevWkTm.Stats.Losses.Val
+
+				tm.Stats.TotalOffense.Val += prevWkTm.Stats.TotalOffense.Val
+				tm.Stats.TotalDefense.Val += prevWkTm.Stats.TotalDefense.Val
+
+				tm.Stats.PF.Val += prevWkTm.Stats.PF.Val
+				tm.Stats.PA.Val += prevWkTm.Stats.PA.Val
+
+				tm.Games = append(prevWkTm.Games, tm.Games...)
+			}
+		}
+		prev = k
+	}
+}
+
+func calcWeights(sznMap SeasonMap) {
+
+	//iterate through weightedWeeks and sort stats assign rank
+	for _, wk := range sznMap {
+
+		tms := wkToSlice(wk)
+
+		rankConfigs := []rankerParams{
+			//wins
+			makeRanker(
+				tms,
+				func(t *RankableTeam) int { return t.Stats.Wins.Val },
+				func(t *RankableTeam, i int) { t.Stats.Wins.Rank = i },
+				true,
+			),
+			// off
+			makeRanker(
+				tms,
+				func(t *RankableTeam) int { return t.Stats.TotalOffense.Val },
+				func(t *RankableTeam, i int) { t.Stats.TotalOffense.Rank = i },
+				true,
+			),
+			//pf
+			makeRanker(tms,
+				func(t *RankableTeam) int { return t.Stats.PF.Val },
+				func(t *RankableTeam, i int) { t.Stats.PF.Rank = i },
+				true,
+			),
+			/* Descending stats */
+
+			//losses
+			makeRanker(
+				tms,
+				func(t *RankableTeam) int { return t.Stats.Losses.Val },
+				func(t *RankableTeam, i int) { t.Stats.Losses.Rank = i },
+				false,
+			),
+			//def
+			makeRanker(
+				tms,
+				func(t *RankableTeam) int { return t.Stats.TotalDefense.Val },
+				func(t *RankableTeam, i int) { t.Stats.TotalDefense.Rank = i },
+				false,
+			),
+			//PA
+			makeRanker(
+				tms,
+				func(t *RankableTeam) int { return t.Stats.PA.Val },
+				func(t *RankableTeam, i int) { t.Stats.PA.Rank = i },
+				false,
+			),
+		}
+
+		for _, cfg := range rankConfigs {
+			rankStat(cfg)
+		}
+
+		//sum weights
+		for _, tms := range sznMap {
+			for _, tm := range tms {
+				tm.sumWeights()
+			}
+		}
+
+		// Assign overall ranking
+		for _, tms := range sznMap {
+			tmSlice := wkToSlice(tms)
+
+			sort.Slice(tmSlice, func(i, j int) bool {
+				return tmSlice[i].Weight < tmSlice[j].Weight
+			})
+
+			rankStat(
+				makeRanker(
+					tmSlice,
+					func(t *RankableTeam) int { return t.Weight },
+					func(t *RankableTeam, i int) { t.Rank = i },
+					false,
+				))
+		}
+	}
+}
+
+func wkToSlice(wk map[int]*RankableTeam) []*RankableTeam {
+	tms := []*RankableTeam{}
+	for _, v := range wk {
+		tms = append(tms, v)
+	}
+	return tms
+}
+
+func squashSeasonMaps(sznMaps map[int]SeasonMap) SeasonMap {
+	types := []int{}
+
+	weekIndex := 0
+	finalSzn := make(SeasonMap)
+
+	for k := range sznMaps {
+		types = append(types, k)
+	}
+
+	slices.Sort(types)
+
+	for _, t := range types {
+		currSzn := sznMaps[t]
+
+		wks := []int{}
+
+		for k := range currSzn {
+			wks = append(wks, k)
+		}
+
+		slices.Sort(wks)
+
+		for _, wk := range wks {
+			finalSzn[weekIndex] = currSzn[wk]
+			weekIndex++
+		}
+
+	}
+
+	log.Println(len(sznMaps))
+	log.Println(len(finalSzn))
+
+	return finalSzn
+}
+
+/*
+ignore 0 week
+every week after, eval prev week ranks, rank poll inertia then re weight
+*/
+
+func caclPollInertia() {
+
+}
+
+/*
+ignore week 0,
+eval prev week to calc curr week, do this last
+*/
+func calcStrengthOfSched() {
+
 }

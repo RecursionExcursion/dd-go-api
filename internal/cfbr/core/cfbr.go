@@ -61,6 +61,7 @@ func MapToRanker(szn Season) (tms []RankerTeam, gms []RankerGame, err error) {
 		gms[i] = RankerGame{
 			Id:   id,
 			Week: g.Header.Week,
+			Type: g.Header.Season.Type,
 			Stats: RankerGameStats{
 				Home: homeStats,
 				Away: awayStats,

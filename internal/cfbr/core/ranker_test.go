@@ -142,7 +142,7 @@ type expectedStats struct {
 }
 
 func TestCompileSeasonStats(t *testing.T) {
-	var checkStats = func(expected expectedStats, tm *Rteam) {
+	var checkStats = func(expected expectedStats, tm *RankableTeam) {
 		tmId := tm.Id
 		stats := tm.Stats
 

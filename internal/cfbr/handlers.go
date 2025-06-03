@@ -145,13 +145,18 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 		log.Panic(err)
 	}
 
+	s := core.RankSeasonProto(tms, gms)
+
 	rs, err := core.Rank(tms, gms)
 	if err != nil {
 		api.Response.ServerError(w, []any{err.Error()})
 		return
 	}
 
-	api.Response.Ok(w, []any{tms, gms, rs})
+	log.Println("Done")
+	api.Response.Ok(w, []any{s, rs})
+
+	// api.Response.Ok(w, []any{tms, gms, rs})
 	// api.Response.Ok(w, []any{rs, szn})
 }
 
