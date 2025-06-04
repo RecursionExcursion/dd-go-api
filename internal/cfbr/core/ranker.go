@@ -1,6 +1,7 @@
 package core
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"log"
@@ -52,6 +53,24 @@ type WeightedStat struct {
 
 // Consider stat map for dynamic stats
 // Could have options "damage opposition"
+
+// TODO dont forget PI and SS
+type RankableTeam struct {
+	Id            int
+	Week          int
+	Rank          int
+	Weight        int
+	Schedule      []ScheduleGame
+	Stats         TrackedStats
+	ExternalStats ExternalStats
+}
+
+type ScheduleGame struct {
+	Id    int
+	Week  int
+	OppId int
+}
+
 type TrackedStats struct {
 	Wins         WeightedStat
 	Losses       WeightedStat
@@ -61,14 +80,9 @@ type TrackedStats struct {
 	PA           WeightedStat
 }
 
-// TODO dont forget PI and SS
-type RankableTeam struct {
-	Id     int
-	Week   int
-	Rank   int
-	Weight int
-	Games  []int
-	Stats  TrackedStats
+type ExternalStats struct {
+	PollIntertia     WeightedStat
+	ScheduleStrength WeightedStat
 }
 
 type teamMap map[int]RankerTeam
@@ -155,6 +169,22 @@ func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
 
 /* Ranking Methods */
 func (rs *RankedSeason) CompileSeasonStats() error {
+	var foo = func(gm RankerGame, tmId int, wk int) error {
+		if tm, ok := rs.WeightedWeeks[wk][tmId]; ok {
+			err := UpdateWeightedTeam(tm, gm)
+			if err != nil {
+				return err
+			}
+			sg, err := gmIdToScheduleGame(tm.Id, gm)
+			if err != nil {
+				return err
+			}
+			tm.Schedule = append(tm.Schedule, sg)
+			rs.WeightedWeeks[wk][tmId] = tm
+
+		}
+		return nil
+	}
 
 	for _, wk := range rs.Weeks {
 
@@ -186,29 +216,41 @@ func (rs *RankedSeason) CompileSeasonStats() error {
 				return fmt.Errorf("game id (%v) not found", gmId)
 			}
 
-			homeTeam := gm.Stats.Home
-			awayTeam := gm.Stats.Away
+			// homeTeam :=
+			// awayTeam := gm.Stats.Away
 
-			//Home team stats
-			if wtHome, ok := rs.WeightedWeeks[wk.Week][homeTeam.Id]; ok {
-				err := UpdateWeightedTeam(wtHome, gm)
-				if err != nil {
-					return err
-				}
-				wtHome.Games = append(wtHome.Games, gmId)
-				rs.WeightedWeeks[wk.Week][homeTeam.Id] = wtHome
+			foo(gm, gm.Stats.Home.Id, wk.Week)
+			foo(gm, gm.Stats.Away.Id, wk.Week)
 
-			}
+			// //Home team stats
+			// if wtHome, ok := rs.WeightedWeeks[wk.Week][homeTeam.Id]; ok {
+			// 	err := UpdateWeightedTeam(wtHome, gm)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	sg, err := gmIdToScheduleGame(wtHome.Id, gm)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	wtHome.Schedule = append(wtHome.Schedule, sg)
+			// 	rs.WeightedWeeks[wk.Week][homeTeam.Id] = wtHome
 
-			//away team stats
-			if wtAway, ok := rs.WeightedWeeks[wk.Week][awayTeam.Id]; ok {
-				err := UpdateWeightedTeam(wtAway, gm)
-				if err != nil {
-					return err
-				}
-				wtAway.Games = append(wtAway.Games, gmId)
-				rs.WeightedWeeks[wk.Week][awayTeam.Id] = wtAway
-			}
+			// }
+
+			// //away team stats
+			// if wtAway, ok := rs.WeightedWeeks[wk.Week][awayTeam.Id]; ok {
+			// 	err := UpdateWeightedTeam(wtAway, gm)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+			// 	sg, err := gmIdToScheduleGame(awayTeam.Id, gm)
+			// 	if err != nil {
+			// 		return err
+			// 	}
+
+			// 	wtAway.Schedule = append(wtAway.Schedule, sg)
+			// 	rs.WeightedWeeks[wk.Week][awayTeam.Id] = wtAway
+			// }
 		}
 	}
 	return nil
@@ -341,16 +383,16 @@ func (wkMap *WeightedWeekMap) copyWeek(week int, newWeek int) (map[int]*Rankable
 	mapCopy := map[int]*RankableTeam{}
 
 	for k, v := range (*wkMap)[week] {
-		gamesCopy := make([]int, len(v.Games))
-		copy(gamesCopy, v.Games)
+		gamesCopy := make([]ScheduleGame, len(v.Schedule))
+		copy(gamesCopy, v.Schedule)
 
 		mapCopy[k] = &RankableTeam{
-			Id:     v.Id,
-			Week:   newWeek,
-			Rank:   v.Rank,
-			Weight: v.Weight,
-			Games:  gamesCopy,
-			Stats:  v.Stats,
+			Id:       v.Id,
+			Week:     newWeek,
+			Rank:     v.Rank,
+			Weight:   v.Weight,
+			Schedule: gamesCopy,
+			Stats:    v.Stats,
 		}
 	}
 
@@ -359,7 +401,10 @@ func (wkMap *WeightedWeekMap) copyWeek(week int, newWeek int) (map[int]*Rankable
 
 /* TODO will need to add weight param */
 func (tm *RankableTeam) sumWeights() {
+	//base
 	wt := 0
+
+	//normal stat
 	wt += tm.Stats.Wins.Rank
 	wt += tm.Stats.Losses.Rank
 	wt += tm.Stats.TotalOffense.Rank
@@ -367,13 +412,18 @@ func (tm *RankableTeam) sumWeights() {
 	wt += tm.Stats.PF.Rank
 	wt += tm.Stats.PA.Rank
 
+	//external stats
+	wt += tm.ExternalStats.PollIntertia.Rank
+	wt += tm.ExternalStats.ScheduleStrength.Rank
+
+	//assignment
 	tm.Weight = wt
 }
 
 func (rt *RankerTeam) teamToRankable() RankableTeam {
 	return RankableTeam{
-		Id:    rt.Id,
-		Games: []int{},
+		Id:       rt.Id,
+		Schedule: []ScheduleGame{},
 	}
 }
 
@@ -435,12 +485,29 @@ type SeasonMap map[int]map[int]*RankableTeam
 
 func RankSeasonProto(tms []RankerTeam, gms []RankerGame) SeasonMap {
 	//create collections
+	sznTypeMap, _, gmMp := accumulateSeason(tms, gms)
+	sznMap := squashSeasonMaps(sznTypeMap)
+
+	squashStats(sznMap)
+
+	calcStatRankings(sznMap)
+	// calcPollInertia(sznMap)
+	calcExternalStats(sznMap, gmMp)
+
+	finalizeWeights(sznMap)
+
+	return sznMap
+}
+
+func accumulateSeason(tms []RankerTeam, gms []RankerGame) (map[int]SeasonMap, teamMap, gameMap) {
 	tmMap := makeTeamMap(tms)
+	gmMp := make(gameMap)
 	// sznMap := make(SeasonMap)
 	sznTypeMap := make(map[int]SeasonMap)
 
 	//iterate games and add stats to sznMap
 	for _, g := range gms {
+		gmMp[g.Id] = g
 
 		tp := g.Type
 		//season type
@@ -467,13 +534,8 @@ func RankSeasonProto(tms []RankerTeam, gms []RankerGame) SeasonMap {
 			UpdateWeightedTeam(at, g)
 		}
 	}
-	sznMap := squashSeasonMaps(sznTypeMap)
 
-	//squash stats
-	squashStats(sznMap)
-	calcWeights(sznMap)
-
-	return sznMap
+	return sznTypeMap, tmMap, gmMp
 }
 
 func makeTeamMap(tms []RankerTeam) teamMap {
@@ -532,20 +594,19 @@ func UpdateWeightedTeam(tm *RankableTeam, gm RankerGame) error {
 		tm.Stats.Losses.Val++
 	}
 
-	tm.Games = append(tm.Games, gm.Id)
+	sg, err := gmIdToScheduleGame(tmId, gm)
+	if err != nil {
+		return err
+	}
+
+	tm.Schedule = append(tm.Schedule, sg)
 
 	return nil
 }
 
 func squashStats(sznMap SeasonMap) {
 
-	keys := []int{}
-
-	for k := range sznMap {
-		keys = append(keys, k)
-	}
-
-	slices.Sort(keys)
+	keys := getSortedKeys(sznMap)
 
 	prev := -1
 	for _, k := range keys {
@@ -569,14 +630,14 @@ func squashStats(sznMap SeasonMap) {
 				tm.Stats.PF.Val += prevWkTm.Stats.PF.Val
 				tm.Stats.PA.Val += prevWkTm.Stats.PA.Val
 
-				tm.Games = append(prevWkTm.Games, tm.Games...)
+				tm.Schedule = append(prevWkTm.Schedule, tm.Schedule...)
 			}
 		}
 		prev = k
 	}
 }
 
-func calcWeights(sznMap SeasonMap) {
+func calcStatRankings(sznMap SeasonMap) {
 
 	//iterate through weightedWeeks and sort stats assign rank
 	for _, wk := range sznMap {
@@ -632,30 +693,6 @@ func calcWeights(sznMap SeasonMap) {
 		for _, cfg := range rankConfigs {
 			rankStat(cfg)
 		}
-
-		//sum weights
-		for _, tms := range sznMap {
-			for _, tm := range tms {
-				tm.sumWeights()
-			}
-		}
-
-		// Assign overall ranking
-		for _, tms := range sznMap {
-			tmSlice := wkToSlice(tms)
-
-			sort.Slice(tmSlice, func(i, j int) bool {
-				return tmSlice[i].Weight < tmSlice[j].Weight
-			})
-
-			rankStat(
-				makeRanker(
-					tmSlice,
-					func(t *RankableTeam) int { return t.Weight },
-					func(t *RankableTeam, i int) { t.Rank = i },
-					false,
-				))
-		}
 	}
 }
 
@@ -668,27 +705,15 @@ func wkToSlice(wk map[int]*RankableTeam) []*RankableTeam {
 }
 
 func squashSeasonMaps(sznMaps map[int]SeasonMap) SeasonMap {
-	types := []int{}
+	types := getSortedKeys(sznMaps)
 
 	weekIndex := 0
 	finalSzn := make(SeasonMap)
 
-	for k := range sznMaps {
-		types = append(types, k)
-	}
-
-	slices.Sort(types)
-
 	for _, t := range types {
 		currSzn := sznMaps[t]
 
-		wks := []int{}
-
-		for k := range currSzn {
-			wks = append(wks, k)
-		}
-
-		slices.Sort(wks)
+		wks := getSortedKeys(currSzn)
 
 		for _, wk := range wks {
 			finalSzn[weekIndex] = currSzn[wk]
@@ -703,19 +728,112 @@ func squashSeasonMaps(sznMaps map[int]SeasonMap) SeasonMap {
 	return finalSzn
 }
 
+func calcExternalStats(s SeasonMap, gmMap gameMap) {
+	wks := getSortedKeys(s)
+
+	/* Finalize weights to calc PI and SS off the prev week,
+	this works because 0 week doesnt need a ref from before, but could be passed in
+
+	this could be done only to week[0] and save computation if that elogic is abstracted another layer
+	*/
+	finalizeWeights(s)
+
+	last := -1
+	for i, w := range wks {
+		if i == 0 {
+			last = w
+			continue
+		}
+
+		curr := s[w]
+
+		for id, tm := range curr {
+			calcPollInertia(tm, *(s[last][id]))
+			calcStrengthOfSchedule(tm, s[last])
+		}
+
+		last = w
+	}
+
+}
+
 /*
 ignore 0 week
 every week after, eval prev week ranks, rank poll inertia then re weight
 */
 
-func caclPollInertia() {
-
+func calcPollInertia(curr *RankableTeam, prev RankableTeam) {
+	curr.ExternalStats.PollIntertia.Val = prev.Rank
+	curr.ExternalStats.PollIntertia.Rank = prev.Rank
 }
 
 /*
 ignore week 0,
 eval prev week to calc curr week, do this last
 */
-func calcStrengthOfSched() {
+func calcStrengthOfSchedule(curr *RankableTeam, prev map[int]*RankableTeam) {
+	// for _, gId := range curr.Schedule {
 
+	// }
+}
+
+func getSortedKeys[T cmp.Ordered, v any](mp map[T]v) []T {
+	keys := make([]T, 0, len(mp))
+	for k := range mp {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+/* Only to be done after all weighted rankings are complete */
+func finalizeWeights(s SeasonMap) {
+
+	//sum weights
+	weightRankings(s)
+
+	// Assign overall ranking
+	for _, tms := range s {
+		tmSlice := wkToSlice(tms)
+
+		sort.Slice(tmSlice, func(i, j int) bool {
+			return tmSlice[i].Weight < tmSlice[j].Weight
+		})
+
+		rankStat(
+			makeRanker(
+				tmSlice,
+				func(t *RankableTeam) int { return t.Weight },
+				func(t *RankableTeam, i int) { t.Rank = i },
+				false,
+			))
+	}
+}
+
+func weightRankings(s SeasonMap) {
+	//sum weights
+	for _, tms := range s {
+		for _, tm := range tms {
+			tm.sumWeights()
+		}
+	}
+}
+
+func gmIdToScheduleGame(tmId int, gm RankerGame) (ScheduleGame, error) {
+	oppId := -1
+
+	if gm.Stats.Home.Id == tmId {
+		oppId = gm.Stats.Away.Id
+	} else if gm.Stats.Away.Id == tmId {
+
+		oppId = gm.Stats.Home.Id
+	} else {
+		return ScheduleGame{}, fmt.Errorf("Could not find team %v in game %v", tmId, gm.Id)
+	}
+
+	return ScheduleGame{
+		Id:    gm.Id,
+		Week:  gm.Week,
+		OppId: oppId,
+	}, nil
 }
