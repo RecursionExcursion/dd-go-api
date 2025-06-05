@@ -15,6 +15,24 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+type SeasonCache map[int]core.Season
+
+func (sc *SeasonCache) getSeason(yr int) (core.Season, bool) {
+	log.Println("Cache accessed")
+	szn, ok := (*sc)[yr]
+	if ok {
+		log.Println("Cached data found")
+	}
+
+	return szn, ok
+}
+
+func (sc *SeasonCache) cacheSeason(szn core.Season) {
+	(*sc)[szn.Year] = szn
+}
+
+var cache = make(SeasonCache)
+
 func CfbrRoutes(mwChain []api.Middleware) []api.RouteHandler {
 
 	cfbrHttpMethods := api.HttpMethodGenerator("/cfbr")
@@ -116,21 +134,31 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	intYr, err := strconv.Atoi(yr)
+	if err != nil {
+		api.Response.BadRequest(w, "Year arg cannot be casted to an int")
+		return
+	}
+
 	/* TODO
 	* Only save (cache) curr year and possibly recent years data is about 143kb a szn (compressed)
 	 */
-	//TODO sanitize inputs year < now.year, div must be valid, etc
-	cfbrRepo := CfbrRepository()
-	dbSzn, err := cfbrRepo.FindTById(yr)
-	if err != nil {
-		api.Response.NotFound(w, fmt.Sprintf("Season %v not found", yr))
-		return
+	szn, ok := cache.getSeason(intYr)
+	if !ok {
+		//TODO sanitize inputs year < now.year, div must be valid, etc
+		cfbrRepo := CfbrRepository()
+		dbSzn, err := cfbrRepo.FindTById(yr)
+		if err != nil {
+			api.Response.NotFound(w, fmt.Sprintf("Season %v not found", yr))
+			return
+		}
+		szn, err = brotCompressor.Decompress(dbSzn.CompressedSeason)
+		if err != nil {
+			api.Response.ServerError(w, "Error during season decompression")
+		}
+		log.Printf("Season %v found with %v schedules, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
+		cache.cacheSeason(szn)
 	}
-	szn, err := brotCompressor.Decompress(dbSzn.CompressedSeason)
-	if err != nil {
-		api.Response.ServerError(w, "Error during season decompression")
-	}
-	log.Printf("Season %v found with %v schedules, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
 
 	//TODO compute weights
 	// cs, err := core.ComputeSeason(szn)
@@ -147,14 +175,14 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 
 	s := core.RankSeasonProto(tms, gms)
 
-	rs, err := core.Rank(tms, gms)
-	if err != nil {
-		api.Response.ServerError(w, []any{err.Error()})
-		return
-	}
+	// rs, err := core.Rank(tms, gms)
+	// if err != nil {
+	// 	api.Response.ServerError(w, []any{err.Error()})
+	// 	return
+	// }
 
 	log.Println("Done")
-	api.Response.Ok(w, []any{s, rs})
+	api.Response.Ok(w, []any{s, szn})
 
 	// api.Response.Ok(w, []any{tms, gms, rs})
 	// api.Response.Ok(w, []any{rs, szn})

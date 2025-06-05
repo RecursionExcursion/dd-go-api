@@ -169,7 +169,7 @@ func BuildSeason(teams []RankerTeam, games []RankerGame) RankedSeason {
 
 /* Ranking Methods */
 func (rs *RankedSeason) CompileSeasonStats() error {
-	var foo = func(gm RankerGame, tmId int, wk int) error {
+	var appendStats = func(gm RankerGame, tmId int, wk int) error {
 		if tm, ok := rs.WeightedWeeks[wk][tmId]; ok {
 			err := UpdateWeightedTeam(tm, gm)
 			if err != nil {
@@ -216,41 +216,8 @@ func (rs *RankedSeason) CompileSeasonStats() error {
 				return fmt.Errorf("game id (%v) not found", gmId)
 			}
 
-			// homeTeam :=
-			// awayTeam := gm.Stats.Away
-
-			foo(gm, gm.Stats.Home.Id, wk.Week)
-			foo(gm, gm.Stats.Away.Id, wk.Week)
-
-			// //Home team stats
-			// if wtHome, ok := rs.WeightedWeeks[wk.Week][homeTeam.Id]; ok {
-			// 	err := UpdateWeightedTeam(wtHome, gm)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	sg, err := gmIdToScheduleGame(wtHome.Id, gm)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	wtHome.Schedule = append(wtHome.Schedule, sg)
-			// 	rs.WeightedWeeks[wk.Week][homeTeam.Id] = wtHome
-
-			// }
-
-			// //away team stats
-			// if wtAway, ok := rs.WeightedWeeks[wk.Week][awayTeam.Id]; ok {
-			// 	err := UpdateWeightedTeam(wtAway, gm)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-			// 	sg, err := gmIdToScheduleGame(awayTeam.Id, gm)
-			// 	if err != nil {
-			// 		return err
-			// 	}
-
-			// 	wtAway.Schedule = append(wtAway.Schedule, sg)
-			// 	rs.WeightedWeeks[wk.Week][awayTeam.Id] = wtAway
-			// }
+			appendStats(gm, gm.Stats.Home.Id, wk.Week)
+			appendStats(gm, gm.Stats.Away.Id, wk.Week)
 		}
 	}
 	return nil
