@@ -4,9 +4,9 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/recursionexcursion/dd-go-api/internal/api"
-	"github.com/recursionexcursion/dd-go-api/internal/lib"
-	"github.com/recursionexcursion/dd-go-api/internal/wsd/core"
+	"github.com/RecursionExcursion/api-go/api"
+	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/wsd-core/pkg"
 )
 
 func WsdRoutes(mwChain []api.Middleware) []api.RouteHandler {
@@ -52,7 +52,7 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	params, err := lib.Map[core.CreateExeParams](bodyBytes)
+	params, err := core.Map[pkg.CreateExeParams](bodyBytes)
 	if err != nil {
 		api.Response.ServerError(w, "Failed to map body")
 		return
@@ -69,7 +69,8 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	binPath, name, err := core.CreateGoExe(params)
+	binPath, name, err := pkg.CreateGoExe(params)
+	// binPath, name, err := core.CreateGoExe(params)
 	if err != nil {
 		panic(err)
 	}
@@ -79,7 +80,7 @@ var postWsdBuildHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 
 var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
-	testParams := core.CreateExeParams{
+	testParams := pkg.CreateExeParams{
 		Arch: "win",
 		Commands: []string{
 			"url:www.facebook.com",
@@ -88,7 +89,7 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 		},
 	}
 
-	bin, name, err := core.CreateGoExe(testParams)
+	bin, name, err := pkg.CreateGoExe(testParams)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +99,7 @@ var getWsdTestHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Reques
 var getSupportedOsHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	keys := []string{}
-	for k := range core.SupportedArchitecture {
+	for k := range pkg.SupportedArchitecture {
 		keys = append(keys, k)
 	}
 

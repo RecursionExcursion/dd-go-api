@@ -8,11 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/recursionexcursion/dd-go-api/internal/api"
-	"github.com/recursionexcursion/dd-go-api/internal/betbot/core"
-
-	"github.com/recursionexcursion/dd-go-api/internal/lib"
+	"github.com/RecursionExcursion/api-go/api"
+	"github.com/RecursionExcursion/bet-bot-core/bbcore"
+	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/go-toolkit/jwt"
 )
+
+const BetBotDataId = "data"
 
 func BetbotRoutes(mwChains struct {
 	JwtChain []api.Middleware
@@ -68,13 +70,13 @@ func BetbotRoutes(mwChains struct {
 	}
 }
 
-var fsdStringCompressor = lib.GzipCompressor[core.FirstShotData](
-	lib.Codec[string]{
+var fsdStringCompressor = core.GzipCompressor[bbcore.FirstShotData](
+	core.Codec[string]{
 		Encode: func(b []byte) (string, error) {
-			return lib.BytesToBase64(b), nil
+			return core.BytesToBase64(b), nil
 		},
 		Decode: func(s string) ([]byte, error) {
-			return lib.Base64ToBytes(s)
+			return core.Base64ToBytes(s)
 		},
 	},
 )
@@ -82,37 +84,37 @@ var fsdStringCompressor = lib.GzipCompressor[core.FirstShotData](
 var handleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	_, dataRepo := BetBotRepository()
 
-	timer := lib.StartTimer()
+	timer := core.StartTimer()
 
-	lib.Log("Querying DB for betbot data", 5)
-	compressedData, err := dataRepo.FindTById(core.BetBotDataId)
+	log.Println("Querying DB for betbot data", 5)
+	compressedData, err := dataRepo.FindTById(BetBotDataId)
 	if err != nil {
 		log.Println(err)
 		api.Response.ServerError(w, "")
 		return
 	}
 
-	lib.Log("Decompressing Data", 5)
+	log.Println("Decompressing Data", 5)
 	decompressedDbData, err := fsdStringCompressor.Decompress(compressedData.Data)
 	if err != nil {
 		api.Response.ServerError(w)
 		return
 	}
 
-	lib.Log("Compiling stats", 5)
-	packagedData, err := core.NewStatCalculator(decompressedDbData).CalculateAndPackage()
+	log.Println("Compiling stats", 5)
+	packagedData, err := bbcore.NewStatCalculator(decompressedDbData).CalculateAndPackage()
 	if err != nil {
-		lib.LogError("", err)
+		log.Println("", err)
 		api.Response.ServerError(w)
 		return
 	}
 
-	lib.Log("Gzipping payload", 5)
+	log.Println("Gzipping payload", 5)
 
 	api.Response.Gzip(w, 200,
 		struct {
 			Meta int64
-			Data []core.PackagedPlayer
+			Data []bbcore.PackagedPlayer
 		}{
 			Meta: decompressedDbData.Created,
 			Data: packagedData,
@@ -139,29 +141,29 @@ var handleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 	/* Long running task, done in the bg, tacked by the isWorking atomic Bool */
 	go func() {
-		timer := lib.StartTimer()
+		timer := core.StartTimer()
 		defer func() {
 			isWorking.Store(false)
 			timer.End()
 		}()
 
 		//collect data
-		lib.Log("Collecting Data", 5)
-		fsd, err := core.CollectData()
+		log.Println("Collecting Data", 5)
+		fsd, err := bbcore.CollectData()
 		if err != nil {
 			log.Printf("Error while collecting data: %v", err)
 			return
 		}
 
 		//compress data
-		lib.Log("Compressing Data", 5)
+		log.Println("Compressing Data", 5)
 		compressedData, err := fsdStringCompressor.Compress(fsd)
 		if err != nil {
 			log.Printf("Error while compressing data: %v", err)
 			return
 		}
-		compressed := core.CompressedFsData{
-			Id:      core.BetBotDataId,
+		compressed := CompressedFsData{
+			Id:      BetBotDataId,
 			Created: fsd.Created,
 			Data:    compressedData,
 		}
@@ -169,20 +171,20 @@ var handleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 		_, dataRepo := BetBotRepository()
 
 		//Wipe old data
-		lib.Log("Wiping stale Data", 5)
-		ok, err := dataRepo.DeleteById(core.BetBotDataId)
+		log.Println("Wiping stale Data", 5)
+		ok, err := dataRepo.DeleteById(BetBotDataId)
 		if err != nil || !ok {
 			log.Println("Error while wiping data")
-			lib.Log(err.Error(), -1)
+			log.Println(err.Error(), -1)
 			return
 		}
 
 		//save data
-		lib.Log("Saving New Data", 5)
+		log.Println("Saving New Data", 5)
 		_, err = dataRepo.SaveT(compressed)
 		if err != nil {
 			log.Println("Error while saving data")
-			lib.Log(err.Error(), -1)
+			log.Println(err.Error(), -1)
 			return
 		}
 
@@ -194,28 +196,28 @@ var handleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 /* Collect, Compute, Send (No state is saved) */
 var handleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	//collect data
-	fsd, err := core.CollectData()
+	fsd, err := bbcore.CollectData()
 	if err != nil {
 		api.Response.ServerError(w)
 		return
 	}
 
-	core.FindGameInFsd(fsd, strconv.Itoa(401705613))
+	bbcore.FindGameInFsd(fsd, strconv.Itoa(401705613))
 
 	// Compile stats
-	packagedData, err := core.NewStatCalculator(fsd).CalculateAndPackage()
+	packagedData, err := bbcore.NewStatCalculator(fsd).CalculateAndPackage()
 	if err != nil {
-		lib.LogError("", err)
+		log.Println("", err)
 		api.Response.ServerError(w)
 		return
 	}
 
 	// Zip and return
-	lib.Log("Gzipping payload", 5)
+	log.Println("Gzipping payload", 5)
 	api.Response.Gzip(w, 200,
 		struct {
 			Meta string
-			Data []core.PackagedPlayer
+			Data []bbcore.PackagedPlayer
 		}{
 			Meta: strconv.FormatInt(time.Now().UnixMilli(), 10),
 			Data: packagedData,
@@ -239,7 +241,7 @@ var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	pl, err := lib.Map[LoginPayload](bodyBytes)
+	pl, err := core.Map[LoginPayload](bodyBytes)
 	if err != nil {
 		api.Response.ServerError(w, "Failed to read body")
 		return
@@ -268,7 +270,7 @@ var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 		"sub": usr.Username,
 	}
 
-	jwt, err := lib.CreateJWT(claims, time.Hour*48, lib.EnvGetOrPanic("BB_JWT_SECRET"))
+	jwt, err := jwt.CreateJWT(claims, time.Hour*48, core.EnvGetOrPanic("BB_JWT_SECRET"))
 	if err != nil {
 		api.Response.ServerError(w)
 		return

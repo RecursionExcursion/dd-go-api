@@ -1,15 +1,15 @@
 package betbot
 
 import (
-	"github.com/recursionexcursion/dd-go-api/internal/betbot/core"
-	"github.com/recursionexcursion/dd-go-api/internal/lib"
+	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/go-toolkit/mongo"
 )
 
-type BBUserRepo = lib.MongoConnection[core.User]
-type BBDataRepo = lib.MongoConnection[core.CompressedFsData]
+type BBUserRepo = mongo.MongoConnection[User]
+type BBDataRepo = mongo.MongoConnection[CompressedFsData]
 
 func BetBotRepository() (userRepo BBUserRepo, dataRepo BBDataRepo) {
-	dbName := lib.EnvGetOrPanic("DB_NAME_BB")
+	dbName := core.EnvGetOrPanic("DB_NAME_BB")
 
 	userRepo = BBUserRepo{
 		Db:         dbName,

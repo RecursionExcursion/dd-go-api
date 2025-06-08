@@ -8,16 +8,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/RecursionExcursion/api-go/api"
+	"github.com/RecursionExcursion/cfbr-core-go/cfbrcore"
+	"github.com/RecursionExcursion/cfbr-core-go/model"
+	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/andybalholm/brotli"
-	"github.com/recursionexcursion/dd-go-api/internal/api"
-	"github.com/recursionexcursion/dd-go-api/internal/cfbr/core"
-	"github.com/recursionexcursion/dd-go-api/internal/lib"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-type SeasonCache map[int]core.Season
+type SeasonCache map[int]model.Season
 
-func (sc *SeasonCache) getSeason(yr int) (core.Season, bool) {
+func (sc *SeasonCache) getSeason(yr int) (model.Season, bool) {
 	log.Println("Cache accessed")
 	szn, ok := (*sc)[yr]
 	if ok {
@@ -27,7 +28,7 @@ func (sc *SeasonCache) getSeason(yr int) (core.Season, bool) {
 	return szn, ok
 }
 
-func (sc *SeasonCache) cacheSeason(szn core.Season) {
+func (sc *SeasonCache) cacheSeason(szn model.Season) {
 	(*sc)[szn.Year] = szn
 }
 
@@ -62,8 +63,8 @@ func CfbrRoutes(mwChain []api.Middleware) []api.RouteHandler {
 
 }
 
-var brotCompressor = lib.CustomCompressor[core.Season](
-	lib.Algorithms{
+var brotCompressor = core.CustomCompressor[model.Season](
+	core.Algorithms{
 		Writer: func(w io.Writer) (io.WriteCloser, error) {
 			return brotli.NewWriterLevel(w, 11), nil
 		},
@@ -71,12 +72,12 @@ var brotCompressor = lib.CustomCompressor[core.Season](
 			return brotli.NewReader(r), nil
 		},
 	},
-	lib.Codec[string]{
+	core.Codec[string]{
 		Encode: func(b []byte) (string, error) {
-			return lib.BytesToBase64(b), nil
+			return core.BytesToBase64(b), nil
 		},
 		Decode: func(s string) ([]byte, error) {
-			return lib.Base64ToBytes(s)
+			return core.Base64ToBytes(s)
 		},
 	},
 )
@@ -94,7 +95,7 @@ func handleCreateCfbStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	szn, err := core.CompileSeason(intYr)
+	szn, err := cfbrcore.CompileSzn(intYr)
 	if err != nil {
 		api.Response.ServerError(w, "Unable to compile season")
 		return
@@ -107,7 +108,7 @@ func handleCreateCfbStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	scs := core.SerializeableCompressedSeason{
+	scs := cfbrcore.SerializeableCompressedSeason{
 		Id:               strconv.Itoa(szn.Year),
 		Year:             szn.Year,
 		CreatedAt:        int(time.Now().UnixMilli()),
@@ -168,12 +169,12 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 
 	// log.Println("Computation complete")
 
-	tms, gms, err := core.MapToRanker(szn)
+	tms, gms, err := cfbrcore.MapToRanker(szn)
 	if err != nil {
 		log.Panic(err)
 	}
 
-	s := core.RankSeasonProto(tms, gms)
+	s := cfbrcore.RankSeasonProto(tms, gms)
 
 	// rs, err := core.Rank(tms, gms)
 	// if err != nil {

@@ -3,10 +3,10 @@ package app
 import (
 	"net/http"
 
-	"github.com/recursionexcursion/dd-go-api/internal/api"
+	"github.com/RecursionExcursion/api-go/api"
+	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/recursionexcursion/dd-go-api/internal/betbot"
 	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
-	"github.com/recursionexcursion/dd-go-api/internal/lib"
 	"github.com/recursionexcursion/dd-go-api/internal/wsd"
 )
 
@@ -27,11 +27,11 @@ func routes() []api.RouteHandler {
 		JwtChain []api.Middleware
 		KeyChain []api.Middleware
 	}{
-		JwtChain: append(globalMWChain, JWTAuthMW(lib.EnvGetOrPanic("BB_JWT_SECRET"))),
-		KeyChain: append(globalMWChain, KeyAuthMW(lib.EnvGetOrPanic("BB_API_KEY"))),
+		JwtChain: append(globalMWChain, JWTAuthMW(core.EnvGetOrPanic("BB_JWT_SECRET"))),
+		KeyChain: append(globalMWChain, KeyAuthMW(core.EnvGetOrPanic("BB_API_KEY"))),
 	})...)
 
-	routes = append(routes, wsd.WsdRoutes(append(globalMWChain, KeyAuthMW(lib.EnvGetOrPanic("WSD_API_KEY"))))...)
+	routes = append(routes, wsd.WsdRoutes(append(globalMWChain, KeyAuthMW(core.EnvGetOrPanic("WSD_API_KEY"))))...)
 
 	routes = append(routes, cfbr.CfbrRoutes(globalMWChain)...)
 
