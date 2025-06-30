@@ -7,6 +7,7 @@ import (
 	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/recursionexcursion/dd-go-api/internal/betbot"
 	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
+	"github.com/recursionexcursion/dd-go-api/internal/pickle"
 	"github.com/recursionexcursion/dd-go-api/internal/wsd"
 )
 
@@ -35,17 +36,19 @@ func routes() []api.RouteHandler {
 
 	routes = append(routes, cfbr.CfbrRoutes(globalMWChain)...)
 
+	routes = append(routes, pickle.PickleRoutes(globalMWChain)...)
+
 	return routes
 }
 
 var globalMWChain = func() []api.Middleware {
-	geoParams := GeoLimitParams{
-		// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
-	}
+	// geoParams := GeoLimitParams{
+	// 	// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
+	// }
 
 	globalMWChain := []api.Middleware{
 		LoggerMW,
-		GeoLimitMW(geoParams),
+		// GeoLimitMW(geoParams),
 		RateLimitMW,
 	}
 
