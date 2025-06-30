@@ -160,15 +160,6 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Season %v found with %v schedules, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
 		cache.cacheSeason(szn)
 	}
-
-	//TODO compute weights
-	// cs, err := core.ComputeSeason(szn)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// log.Println("Computation complete")
-
 	tms, gms, err := cfbrcore.MapToRanker(szn)
 	if err != nil {
 		log.Panic(err)
@@ -176,17 +167,7 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 
 	s := cfbrcore.RankSeasonProto(tms, gms)
 
-	// rs, err := core.Rank(tms, gms)
-	// if err != nil {
-	// 	api.Response.ServerError(w, []any{err.Error()})
-	// 	return
-	// }
-
-	log.Println("Done")
 	api.Response.Ok(w, []any{s, szn})
-
-	// api.Response.Ok(w, []any{tms, gms, rs})
-	// api.Response.Ok(w, []any{rs, szn})
 }
 
 var handleDeleteCfbrData = func(w http.ResponseWriter, r *http.Request) {
