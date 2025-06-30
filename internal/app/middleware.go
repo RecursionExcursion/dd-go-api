@@ -9,8 +9,9 @@ import (
 
 	"slices"
 
-	"github.com/recursionexcursion/dd-go-api/internal/api"
-	"github.com/recursionexcursion/dd-go-api/internal/lib"
+	"github.com/RecursionExcursion/api-go/api"
+	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/go-toolkit/jwt"
 	"golang.org/x/time/rate"
 )
 
@@ -53,7 +54,7 @@ func JWTAuthMW(key string) api.Middleware {
 				api.Response.Unauthorized(w, "Malformed token")
 				return
 			}
-			if isValid, _, _ := lib.ParseJWT(parts[1], key); !isValid {
+			if isValid, _, _ := jwt.ParseJWT(parts[1], key); !isValid {
 				api.Response.Unauthorized(w, "Invalid token")
 				return
 			}
@@ -105,14 +106,14 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 		return func(w http.ResponseWriter, r *http.Request) {
 			addr := r.RemoteAddr
 
-			data, res, err := lib.FetchAndMap[GeoLimitData](func() (resp *http.Response, err error) {
+			data, res, err := core.FetchAndMap[GeoLimitData](func() (resp *http.Response, err error) {
 				return http.Get(fmt.Sprintf("http://ip-api.com/json/%v", addr))
 			})
 			if err != nil {
 				if res.StatusCode == 429 {
 					api.Response.ServerError(w, "too many requests, please try again later")
 				} else {
-					lib.LogError(addr, err, "GeoLimitMW", "FetchAndMap")
+					log.Println(addr, err, "GeoLimitMW", "FetchAndMap")
 					api.Response.ServerError(w, "something went wrong, please try again later")
 				}
 				return
