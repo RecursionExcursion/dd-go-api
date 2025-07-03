@@ -7,6 +7,7 @@ import (
 	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/recursionexcursion/dd-go-api/internal/betbot"
 	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
+	"github.com/recursionexcursion/dd-go-api/internal/hash"
 	"github.com/recursionexcursion/dd-go-api/internal/pickle"
 	"github.com/recursionexcursion/dd-go-api/internal/wsd"
 )
@@ -36,7 +37,10 @@ func routes() []api.RouteHandler {
 
 	routes = append(routes, cfbr.CfbrRoutes(globalMWChain)...)
 
-	routes = append(routes, pickle.PickleRoutes(globalMWChain)...)
+	routes = append(routes, pickle.PickleRoutes(append(globalMWChain, JWTAuthMW(core.EnvGetOrPanic("PICKLE_SECRET"))))...)
+	routes = append(routes, pickle.PickleLoginRoute(globalMWChain)...)
+
+	routes = append(routes, hash.HashRoutes(globalMWChain)...)
 
 	return routes
 }

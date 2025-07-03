@@ -11,6 +11,7 @@ import (
 
 	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/go-toolkit/jwt"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -73,6 +74,20 @@ func PickleRoutes(mwChain []api.Middleware) []api.RouteHandler {
 		getMatch,
 		deleteMatch,
 	}
+}
+
+func PickleLoginRoute(mwChain []api.Middleware) []api.RouteHandler {
+	pickleAuthEndpoints := api.HttpMethodGenerator("/pickle/auth")
+
+	login := api.RouteHandler{
+		MethodAndPath: pickleAuthEndpoints().POST,
+		Handler:       loginHandler,
+		Middleware:    mwChain,
+	}
+	return []api.RouteHandler{
+		login,
+	}
+
 }
 
 var dataId = "pickle"
@@ -219,4 +234,37 @@ func generateUID() string {
 	nano := time.Now().UnixNano()
 	randPart := rand.Intn(1000)
 	return strconv.FormatInt(nano+int64(randPart), 36)
+}
+
+type LoginPayload struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+var loginHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	creds, err := readBodyAsJson[LoginPayload](r)
+	if err != nil {
+		api.Response.BadRequest(w)
+		return
+	}
+
+	un := core.EnvGetOrPanic("PICKLE_USERNAME")
+	pw := core.EnvGetOrPanic("PICKLE_PASSWORD")
+
+	if un != creds.Username || pw != creds.Password {
+		api.Response.Unauthorized(w)
+		return
+	}
+
+	claims := map[string]any{
+		"sub": creds.Username,
+	}
+
+	jwt, err := jwt.CreateJWT(claims, time.Hour*24, core.EnvGetOrPanic("PICKLE_SECRET"))
+	if err != nil {
+		api.Response.ServerError(w)
+		return
+	}
+
+	api.Response.Ok(w, jwt)
 }
