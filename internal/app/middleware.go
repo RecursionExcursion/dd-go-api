@@ -9,13 +9,13 @@ import (
 
 	"slices"
 
-	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/RecursionExcursion/go-toolkit/jwt"
+	"github.com/RecursionExcursion/gouse/gouse"
 	"golang.org/x/time/rate"
 )
 
-func LoggerMW(next api.HandlerFn) api.HandlerFn {
+func LoggerMW(next gouse.HandlerFn) gouse.HandlerFn {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		remote := r.RemoteAddr
@@ -28,14 +28,14 @@ func LoggerMW(next api.HandlerFn) api.HandlerFn {
 	}
 }
 
-func KeyAuthMW(key string) api.Middleware {
-	return func(next api.HandlerFn) api.HandlerFn {
+func KeyAuthMW(key string) gouse.Middleware {
+	return func(next gouse.HandlerFn) gouse.HandlerFn {
 		return func(w http.ResponseWriter, r *http.Request) {
 			token := r.Header.Get(("Authorization"))
 			parts := strings.SplitN(token, " ", 2)
 
 			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" || parts[1] != key {
-				api.Response.Unauthorized(w, "Invalid token")
+				gouse.Response.Unauthorized(w, "Invalid token")
 				return
 			}
 
@@ -44,18 +44,18 @@ func KeyAuthMW(key string) api.Middleware {
 	}
 }
 
-func JWTAuthMW(key string) api.Middleware {
-	return func(next api.HandlerFn) api.HandlerFn {
+func JWTAuthMW(key string) gouse.Middleware {
+	return func(next gouse.HandlerFn) gouse.HandlerFn {
 		return func(w http.ResponseWriter, r *http.Request) {
 			token := r.Header.Get(("Authorization"))
 			parts := strings.SplitN(token, " ", 2)
 
 			if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-				api.Response.Unauthorized(w, "Malformed token")
+				gouse.Response.Unauthorized(w, "Malformed token")
 				return
 			}
 			if isValid, _, _ := jwt.ParseJWT(parts[1], key); !isValid {
-				api.Response.Unauthorized(w, "Invalid token")
+				gouse.Response.Unauthorized(w, "Invalid token")
 				return
 			}
 
@@ -64,7 +64,7 @@ func JWTAuthMW(key string) api.Middleware {
 	}
 }
 
-func RateLimitMW(next api.HandlerFn) api.HandlerFn {
+func RateLimitMW(next gouse.HandlerFn) gouse.HandlerFn {
 	// refil rate 5/sec, total bucket size is 10
 	var limiter = rate.NewLimiter(5, 10)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -86,8 +86,8 @@ type GeoLimitParams struct {
 	BlacklistZipCodes []string
 }
 
-func GeoLimitMW(params GeoLimitParams) api.Middleware {
-	return func(next api.HandlerFn) api.HandlerFn {
+func GeoLimitMW(params GeoLimitParams) gouse.Middleware {
+	return func(next gouse.HandlerFn) gouse.HandlerFn {
 		type GeoLimitData struct {
 			Query         string `json:"query"`
 			Status        string `json:"status"`
@@ -111,10 +111,10 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 			})
 			if err != nil {
 				if res.StatusCode == 429 {
-					api.Response.ServerError(w, "too many requests, please try again later")
+					gouse.Response.ServerError(w, "too many requests, please try again later")
 				} else {
 					log.Println(addr, err, "GeoLimitMW", "FetchAndMap")
-					api.Response.ServerError(w, "something went wrong, please try again later")
+					gouse.Response.ServerError(w, "something went wrong, please try again later")
 				}
 				return
 			}
@@ -141,7 +141,7 @@ func GeoLimitMW(params GeoLimitParams) api.Middleware {
 			}
 
 			if isBlackListed() || !isWhitelisted() {
-				api.Response.Forbidden(w, "")
+				gouse.Response.Forbidden(w, "")
 				return
 			}
 

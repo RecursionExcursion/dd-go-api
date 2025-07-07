@@ -3,10 +3,10 @@ module github.com/recursionexcursion/dd-go-api
 go 1.24.1
 
 require (
-	github.com/RecursionExcursion/api-go v0.0.0-20250608163412-5d8e966c39dc
 	github.com/RecursionExcursion/bet-bot-core v0.0.0-20250608154919-02415ca03a3e
 	github.com/RecursionExcursion/cfbr-core-go v0.0.0-20250608162526-a584acde97d4
 	github.com/RecursionExcursion/go-toolkit v0.0.0-20250608151152-57eefdb5d4d7
+	github.com/RecursionExcursion/gouse v1.0.0
 	github.com/RecursionExcursion/wsd-core v0.0.0-20250608155349-1afe3c57ee1e
 	github.com/andybalholm/brotli v1.1.1
 	go.mongodb.org/mongo-driver v1.17.4

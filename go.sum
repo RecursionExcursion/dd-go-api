@@ -1,11 +1,11 @@
-github.com/RecursionExcursion/api-go v0.0.0-20250608163412-5d8e966c39dc h1:Nq9DhnQWToASTOeELh/vdDvhhop6mj3918OFMNT/hD4=
-github.com/RecursionExcursion/api-go v0.0.0-20250608163412-5d8e966c39dc/go.mod h1:nol6EoHdyxv9xiZAezmkEoyhbx7Gq3zggqaN/FhSvWM=
 github.com/RecursionExcursion/bet-bot-core v0.0.0-20250608154919-02415ca03a3e h1:xH/O+dnYwgRWD+m0byv44bJvDfgMP4aO08bDp3DA5Dw=
 github.com/RecursionExcursion/bet-bot-core v0.0.0-20250608154919-02415ca03a3e/go.mod h1:NpXClLwM2gfbxCNFDsv/5zM4BH45s+4ezGsSWQGeS+c=
 github.com/RecursionExcursion/cfbr-core-go v0.0.0-20250608162526-a584acde97d4 h1:uRlHJudjrzcYzYY2RhJXzIJ+e00QuwyTsxOGgd35JvQ=
 github.com/RecursionExcursion/cfbr-core-go v0.0.0-20250608162526-a584acde97d4/go.mod h1:CDMf1FHtVzVG3dy+GhUnMOQazjVHOo63oIPKxktVkxI=
 github.com/RecursionExcursion/go-toolkit v0.0.0-20250608151152-57eefdb5d4d7 h1:FddCZOrFpd1/e2p6Wy7GssjFg2UfPQTwOu5KgVQr3q0=
 github.com/RecursionExcursion/go-toolkit v0.0.0-20250608151152-57eefdb5d4d7/go.mod h1:ExNldVW9vkQMGcf2ugjAGiXdukaj/tctfW+KUQthSd8=
+github.com/RecursionExcursion/gouse v1.0.0 h1:svr8F0O6EDv3ix2prMt2k/+oCHGKiU2lCRWNw6DnPRs=
+github.com/RecursionExcursion/gouse v1.0.0/go.mod h1:6dAGTBl7q9tgMO8oym/7Q34vphWzy0U/IyBmG65ZeMk=
 github.com/RecursionExcursion/wsd-core v0.0.0-20250608155349-1afe3c57ee1e h1:F1WsHEYBx3NY5v4+ghmfFCIZk8aGN5dpsrBn84A/G28=
 github.com/RecursionExcursion/wsd-core v0.0.0-20250608155349-1afe3c57ee1e/go.mod h1:flBbyTXteSOS2MGZWRnV6pkaTigTXCgCf52d3o35H2o=
 github.com/andybalholm/brotli v1.1.1 h1:PR2pgnyFznKEugtsUo0xLdDop5SKXd5Qf5ysW+7XdTA=

@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/cfbr-core-go/cfbrcore"
 	"github.com/RecursionExcursion/cfbr-core-go/model"
 	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/gouse/gouse"
 	"github.com/andybalholm/brotli"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -34,28 +34,28 @@ func (sc *SeasonCache) cacheSeason(szn model.Season) {
 
 var cache = make(SeasonCache)
 
-func CfbrRoutes(mwChain []api.Middleware) []api.RouteHandler {
+func CfbrRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 
-	cfbrHttpMethods := api.HttpMethodGenerator("/cfbr")
+	cfbrHttpMethods := gouse.NewPathBuilder("/cfbr")
 
-	var postCfrbRoute = api.RouteHandler{
-		MethodAndPath: cfbrHttpMethods().POST,
+	var postCfrbRoute = gouse.RouteHandler{
+		MethodAndPath: cfbrHttpMethods.Methods().POST,
 		Handler:       handleCreateCfbStats,
 		Middleware:    mwChain,
 	}
 
-	var getCfbrRoute = api.RouteHandler{
-		MethodAndPath: cfbrHttpMethods().GET,
+	var getCfbrRoute = gouse.RouteHandler{
+		MethodAndPath: cfbrHttpMethods.Methods().GET,
 		Handler:       handleGetCfbrRankings,
 		Middleware:    mwChain,
 	}
-	var deleteCfbrDataRoute = api.RouteHandler{
-		MethodAndPath: cfbrHttpMethods().DELETE,
+	var deleteCfbrDataRoute = gouse.RouteHandler{
+		MethodAndPath: cfbrHttpMethods.Methods().DELETE,
 		Handler:       handleDeleteCfbrData,
 		Middleware:    mwChain,
 	}
 
-	return []api.RouteHandler{
+	return []gouse.RouteHandler{
 		postCfrbRoute,
 		getCfbrRoute,
 		deleteCfbrDataRoute,
@@ -85,26 +85,26 @@ var brotCompressor = core.CustomCompressor[model.Season](
 func handleCreateCfbStats(w http.ResponseWriter, r *http.Request) {
 	yr, ok, msg := extractYtQueryParam(r)
 	if !ok {
-		api.Response.BadRequest(w, msg)
+		gouse.Response.BadRequest(w, msg)
 		return
 	}
 
 	intYr, err := strconv.Atoi(yr)
 	if err != nil {
-		api.Response.BadRequest(w, "Invalid query params")
+		gouse.Response.BadRequest(w, "Invalid query params")
 		return
 	}
 
 	szn, err := cfbrcore.CompileSzn(intYr)
 	if err != nil {
-		api.Response.ServerError(w, "Unable to compile season")
+		gouse.Response.ServerError(w, "Unable to compile season")
 		return
 	}
 	log.Printf("Season %v created with %v schools, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
 
 	compressedSeason, err := brotCompressor.Compress(szn)
 	if err != nil {
-		api.Response.ServerError(w, "Error while compressing season")
+		gouse.Response.ServerError(w, "Error while compressing season")
 		return
 	}
 
@@ -118,26 +118,26 @@ func handleCreateCfbStats(w http.ResponseWriter, r *http.Request) {
 	cfbrRepo := CfbrRepository()
 	ok, err = cfbrRepo.UpsertT(scs, bson.M{"id": scs.Id})
 	if !ok || err != nil {
-		api.Response.ServerError(w, "Error saving data to db")
+		gouse.Response.ServerError(w, "Error saving data to db")
 		return
 	}
 
 	log.Println("Season saved")
 
 	// return szn, nil
-	api.Response.Created(w)
+	gouse.Response.Created(w)
 }
 
 func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 	yr, ok, msg := extractYtQueryParam(r)
 	if !ok {
-		api.Response.BadRequest(w, msg)
+		gouse.Response.BadRequest(w, msg)
 		return
 	}
 
 	intYr, err := strconv.Atoi(yr)
 	if err != nil {
-		api.Response.BadRequest(w, "Year arg cannot be casted to an int")
+		gouse.Response.BadRequest(w, "Year arg cannot be casted to an int")
 		return
 	}
 
@@ -150,12 +150,12 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 		cfbrRepo := CfbrRepository()
 		dbSzn, err := cfbrRepo.FindTById(yr)
 		if err != nil {
-			api.Response.NotFound(w, fmt.Sprintf("Season %v not found", yr))
+			gouse.Response.NotFound(w, fmt.Sprintf("Season %v not found", yr))
 			return
 		}
 		szn, err = brotCompressor.Decompress(dbSzn.CompressedSeason)
 		if err != nil {
-			api.Response.ServerError(w, "Error during season decompression")
+			gouse.Response.ServerError(w, "Error during season decompression")
 		}
 		log.Printf("Season %v found with %v schedules, %v schools and %v games\n", szn.Year, len(szn.Schedules), len(szn.Teams), len(szn.Games))
 		cache.cacheSeason(szn)
@@ -167,13 +167,13 @@ func handleGetCfbrRankings(w http.ResponseWriter, r *http.Request) {
 
 	s := cfbrcore.RankSeasonProto(tms, gms)
 
-	api.Response.Ok(w, []any{s, szn})
+	gouse.Response.Ok(w, []any{s, szn})
 }
 
 var handleDeleteCfbrData = func(w http.ResponseWriter, r *http.Request) {
 	yr, ok, msg := extractYtQueryParam(r)
 	if !ok {
-		api.Response.BadRequest(w, msg)
+		gouse.Response.BadRequest(w, msg)
 		return
 	}
 
@@ -181,10 +181,10 @@ var handleDeleteCfbrData = func(w http.ResponseWriter, r *http.Request) {
 	ok, err := cfbrRepo.DeleteById(yr)
 	if !ok || err != nil {
 		log.Println(err)
-		api.Response.ServerError(w, "Data could not be deleted")
+		gouse.Response.ServerError(w, "Data could not be deleted")
 		return
 	}
-	api.Response.Ok(w, fmt.Sprintf("Season %v DELETED", yr))
+	gouse.Response.Ok(w, fmt.Sprintf("Season %v DELETED", yr))
 }
 
 /* Returns (param, success, error msg) */
