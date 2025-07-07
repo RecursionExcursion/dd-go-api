@@ -1,33 +1,31 @@
 package pickle
 
 import (
-	"errors"
-	"io"
 	"log"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
 
-	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/RecursionExcursion/go-toolkit/jwt"
+	"github.com/RecursionExcursion/gouse/gouse"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func PickleRoutes(mwChain []api.Middleware) []api.RouteHandler {
+func PickleRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 
-	picklePlayerEndpoints := api.HttpMethodGenerator("/pickle/player")
+	picklePlayerEndpoints := gouse.NewPathBuilder("/pickle/player")
 
 	//Player routes
-	createPlayer := api.RouteHandler{
-		MethodAndPath: picklePlayerEndpoints().POST,
+	createPlayer := gouse.RouteHandler{
+		MethodAndPath: picklePlayerEndpoints.Methods().POST,
 		Handler:       createPlayerHandler,
 		Middleware:    mwChain,
 	}
 
-	getPlayer := api.RouteHandler{
-		MethodAndPath: picklePlayerEndpoints().GET,
+	getPlayer := gouse.RouteHandler{
+		MethodAndPath: picklePlayerEndpoints.Methods().GET,
 		Handler:       getPlayersHandler,
 		Middleware:    mwChain,
 	}
@@ -38,34 +36,34 @@ func PickleRoutes(mwChain []api.Middleware) []api.RouteHandler {
 	// 	Middleware: mwChain,
 	// }
 
-	deletePlayer := api.RouteHandler{
-		MethodAndPath: picklePlayerEndpoints().DELETE,
+	deletePlayer := gouse.RouteHandler{
+		MethodAndPath: picklePlayerEndpoints.Methods().DELETE,
 		Handler:       deletePlayerHandler,
 		Middleware:    mwChain,
 	}
 
-	pickleMatchEndpoints := api.HttpMethodGenerator("/pickle/match")
+	pickleMatchEndpoints := gouse.NewPathBuilder("/pickle/match")
 
 	// //match routes
-	createMatch := api.RouteHandler{
-		MethodAndPath: pickleMatchEndpoints().POST,
+	createMatch := gouse.RouteHandler{
+		MethodAndPath: pickleMatchEndpoints.Methods().POST,
 		Handler:       createMatchHandler,
 		Middleware:    mwChain,
 	}
 
-	getMatch := api.RouteHandler{
-		MethodAndPath: pickleMatchEndpoints().GET,
+	getMatch := gouse.RouteHandler{
+		MethodAndPath: pickleMatchEndpoints.Methods().GET,
 		Handler:       getMatchesHandler,
 		Middleware:    mwChain,
 	}
 
-	deleteMatch := api.RouteHandler{
-		MethodAndPath: pickleMatchEndpoints().DELETE,
+	deleteMatch := gouse.RouteHandler{
+		MethodAndPath: pickleMatchEndpoints.Methods().DELETE,
 		Handler:       deleteMatchHandler,
 		Middleware:    mwChain,
 	}
 
-	return []api.RouteHandler{
+	return []gouse.RouteHandler{
 		createPlayer,
 		getPlayer,
 		// updatePlayer,
@@ -76,15 +74,15 @@ func PickleRoutes(mwChain []api.Middleware) []api.RouteHandler {
 	}
 }
 
-func PickleLoginRoute(mwChain []api.Middleware) []api.RouteHandler {
-	pickleAuthEndpoints := api.HttpMethodGenerator("/pickle/auth")
+func PickleLoginRoute(mwChain []gouse.Middleware) []gouse.RouteHandler {
+	pickleAuthEndpoints := gouse.NewPathBuilder("/pickle/auth")
 
-	login := api.RouteHandler{
-		MethodAndPath: pickleAuthEndpoints().POST,
+	login := gouse.RouteHandler{
+		MethodAndPath: pickleAuthEndpoints.Methods().POST,
 		Handler:       loginHandler,
 		Middleware:    mwChain,
 	}
-	return []api.RouteHandler{
+	return []gouse.RouteHandler{
 		login,
 	}
 
@@ -112,16 +110,16 @@ func saveData(pd PickleData) (bool, error) {
 	return pickleRepo.UpsertT(pd, bson.M{"id": dataId})
 }
 
-var createPlayerHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	newPlayerParams, err := readBodyAsJson[struct {
+var createPlayerHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	newPlayerParams, err := gouse.DecodeJSON[struct {
 		Name string `json:"name"`
 	}](r)
 	if err != nil {
-		api.Response.BadRequest(w, err.Error())
+		gouse.Response.BadRequest(w, err.Error())
 	}
 
 	if newPlayerParams.Name == "" {
-		api.Response.BadRequest(w)
+		gouse.Response.BadRequest(w)
 		return
 	}
 
@@ -136,44 +134,44 @@ var createPlayerHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 
 	_, err = saveData(data)
 	if err != nil {
-		api.Response.ServerError(w, "Failed to save data")
+		gouse.Response.ServerError(w, "Failed to save data")
 		return
 	}
 
-	api.Response.Created(w)
+	gouse.Response.Created(w)
 }
 
-var getPlayersHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var getPlayersHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	data := getData()
-	api.Response.Ok(w, data.Players)
+	gouse.Response.Ok(w, data.Players)
 }
 
-var deletePlayerHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	deletePlayerParams, err := readBodyAsJson[struct {
+var deletePlayerHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	deletePlayerParams, err := gouse.DecodeJSON[struct {
 		Id string `json:"id"`
 	}](r)
 	if err != nil {
-		api.Response.BadRequest(w, err.Error())
+		gouse.Response.BadRequest(w, err.Error())
 	}
 
 	data := getData()
 	ok := data.removePlayer(deletePlayerParams.Id)
 	if !ok {
-		api.Response.NotFound(w)
+		gouse.Response.NotFound(w)
 	} else {
 		saveData(data)
-		api.Response.Ok(w)
+		gouse.Response.Ok(w)
 	}
 
 }
 
 var createMatchHandler = func(w http.ResponseWriter, r *http.Request) {
-	p, err := readBodyAsJson[struct {
+	p, err := gouse.DecodeJSON[struct {
 		Date  int          `json:"date"`
 		Score []MatchScore `json:"score"`
 	}](r)
 	if err != nil {
-		api.Response.BadRequest(w, err.Error())
+		gouse.Response.BadRequest(w, err.Error())
 		return
 	}
 
@@ -186,48 +184,30 @@ var createMatchHandler = func(w http.ResponseWriter, r *http.Request) {
 	data := getData()
 	data.addMatch(match)
 	saveData(data)
-	api.Response.Ok(w)
+	gouse.Response.Ok(w)
 }
 
-var getMatchesHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var getMatchesHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	data := getData()
-	api.Response.Ok(w, data.Matches)
+	gouse.Response.Ok(w, data.Matches)
 }
 
 var deleteMatchHandler = func(w http.ResponseWriter, r *http.Request) {
-	p, err := readBodyAsJson[struct {
+	p, err := gouse.DecodeJSON[struct {
 		Id string `json:"id"`
 	}](r)
 	if err != nil {
-		api.Response.BadRequest(w, err.Error())
+		gouse.Response.BadRequest(w, err.Error())
 		return
 	}
 	data := getData()
 	ok := data.removeMatch(p.Id)
 	if !ok {
-		api.Response.NotFound(w)
+		gouse.Response.NotFound(w)
 	} else {
 		saveData(data)
-		api.Response.Ok(w)
+		gouse.Response.Ok(w)
 	}
-}
-
-func readBodyAsJson[T any](r *http.Request) (T, error) {
-	defer r.Body.Close()
-
-	var t T
-
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		return t, errors.New("failed to read body")
-	}
-
-	t, err = core.Map[T](bodyBytes)
-	if err != nil {
-		return t, errors.New("failed to map body")
-	}
-
-	return t, nil
 }
 
 func generateUID() string {
@@ -241,10 +221,10 @@ type LoginPayload struct {
 	Password string `json:"password"`
 }
 
-var loginHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	creds, err := readBodyAsJson[LoginPayload](r)
+var loginHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	creds, err := gouse.DecodeJSON[LoginPayload](r)
 	if err != nil {
-		api.Response.BadRequest(w)
+		gouse.Response.BadRequest(w)
 		return
 	}
 
@@ -252,7 +232,7 @@ var loginHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	pw := core.EnvGetOrPanic("PICKLE_PASSWORD")
 
 	if un != creds.Username || pw != creds.Password {
-		api.Response.Unauthorized(w)
+		gouse.Response.Unauthorized(w)
 		return
 	}
 
@@ -262,9 +242,9 @@ var loginHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	jwt, err := jwt.CreateJWT(claims, time.Hour*24, core.EnvGetOrPanic("PICKLE_SECRET"))
 	if err != nil {
-		api.Response.ServerError(w)
+		gouse.Response.ServerError(w)
 		return
 	}
 
-	api.Response.Ok(w, jwt)
+	gouse.Response.Ok(w, jwt)
 }

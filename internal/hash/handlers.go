@@ -7,34 +7,34 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/gouse/gouse"
 )
 
-func HashRoutes(mwChain []api.Middleware) []api.RouteHandler {
+func HashRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 
-	hashEndpoints := api.HttpMethodGenerator("/hash")
+	hashEndpoints := gouse.NewPathBuilder("/hash")
 
-	createHash := api.RouteHandler{
-		MethodAndPath: hashEndpoints().POST,
+	createHash := gouse.RouteHandler{
+		MethodAndPath: hashEndpoints.Methods().POST,
 		Handler:       postHandler,
 		Middleware:    mwChain,
 	}
 
-	wakeupHash := api.RouteHandler{
-		MethodAndPath: hashEndpoints().GET,
+	wakeupHash := gouse.RouteHandler{
+		MethodAndPath: hashEndpoints.Methods().GET,
 		Handler:       wakeupHandler,
 		Middleware:    mwChain,
 	}
 
-	return []api.RouteHandler{
+	return []gouse.RouteHandler{
 		createHash,
 		wakeupHash,
 	}
 }
 
-var wakeupHandler api.HandlerFn = func(w http.ResponseWriter, _ *http.Request) {
-	api.Response.Ok(w)
+var wakeupHandler gouse.HandlerFn = func(w http.ResponseWriter, _ *http.Request) {
+	gouse.Response.Ok(w)
 }
 
 type HashRequest struct {
@@ -45,15 +45,15 @@ type HashResponse struct {
 	Hash string `json:"hash"`
 }
 
-var postHandler api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var postHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	s, err := readBodyAsJson[HashRequest](r)
 	if err != nil {
-		api.Response.BadRequest(w)
+		gouse.Response.BadRequest(w)
 		return
 	}
 	hash := sha256.Sum256([]byte(s.Message))
 	resp := HashResponse{Hash: hex.EncodeToString(hash[:])}
-	api.Response.Created(w, resp)
+	gouse.Response.Created(w, resp)
 }
 
 func readBodyAsJson[T any](r *http.Request) (T, error) {

@@ -8,64 +8,68 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/bet-bot-core/bbcore"
 	"github.com/RecursionExcursion/go-toolkit/core"
 	"github.com/RecursionExcursion/go-toolkit/jwt"
+	"github.com/RecursionExcursion/gouse/gouse"
 )
 
 const BetBotDataId = "data"
 
 func BetbotRoutes(mwChains struct {
-	JwtChain []api.Middleware
-	KeyChain []api.Middleware
-}) []api.RouteHandler {
+	JwtChain []gouse.Middleware
+	KeyChain []gouse.Middleware
+}) []gouse.RouteHandler {
 
-	bbBase := api.HttpMethodGenerator("/betbot")
+	bbBase := gouse.NewPathBuilder("/betbot")
+	bbPoll := bbBase.Append("poll")
+	bbzip := bbBase.Append("zip")
+	bbUserLogin := bbBase.Append("user", "login")
+	bbPing := bbBase.Append("ping")
 
-	var getBetBotRoute = api.RouteHandler{
-		MethodAndPath: bbBase().GET,
+	var getBetBotRoute = gouse.RouteHandler{
+		MethodAndPath: bbBase.Methods().GET,
 		Handler:       handleBBGet,
 		Middleware:    mwChains.JwtChain,
 	}
 
-	var revalidateBetBotRoute = api.RouteHandler{
-		MethodAndPath: bbBase().POST,
+	var revalidateBetBotRoute = gouse.RouteHandler{
+		MethodAndPath: bbBase.Methods().POST,
 		Handler:       handleGetBBRevalidation,
 		Middleware:    mwChains.JwtChain,
 	}
-	var pollBetBotRoute = api.RouteHandler{
-		MethodAndPath: bbBase("poll").GET,
+	var pollBetBotRoute = gouse.RouteHandler{
+		MethodAndPath: bbPoll.Methods().GET,
 		Handler:       handleRevalidationPolling,
 		Middleware:    mwChains.JwtChain,
 	}
 
-	var bbRevalidateAndZip = api.RouteHandler{
-		MethodAndPath: bbBase("zip").GET,
+	var bbRevalidateAndZip = gouse.RouteHandler{
+		MethodAndPath: bbzip.Methods().GET,
 		Handler:       handleBBValidateAndZip,
 		Middleware:    mwChains.JwtChain,
 	}
 
-	var loginBBUserRoute = api.RouteHandler{
-		MethodAndPath: bbBase("user", "login").POST,
+	var loginBBUserRoute = gouse.RouteHandler{
+		MethodAndPath: bbUserLogin.Methods().POST,
 		Handler:       handleUserLogin,
 		Middleware:    mwChains.KeyChain,
 	}
 
-	var bbPing = api.RouteHandler{
-		MethodAndPath: bbBase("ping").GET,
+	var bbPingRoute = gouse.RouteHandler{
+		MethodAndPath: bbPing.Methods().GET,
 		Handler: func(w http.ResponseWriter, r *http.Request) {
-			api.Response.Ok(w)
+			gouse.Response.Ok(w)
 		},
 		Middleware: mwChains.KeyChain,
 	}
 
-	return []api.RouteHandler{
+	return []gouse.RouteHandler{
 		getBetBotRoute,
 		revalidateBetBotRoute,
 		loginBBUserRoute,
 		bbRevalidateAndZip,
-		bbPing,
+		bbPingRoute,
 		pollBetBotRoute,
 	}
 }
@@ -81,7 +85,7 @@ var fsdStringCompressor = core.GzipCompressor[bbcore.FirstShotData](
 	},
 )
 
-var handleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var handleBBGet gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	_, dataRepo := BetBotRepository()
 
 	timer := core.StartTimer()
@@ -90,14 +94,14 @@ var handleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	compressedData, err := dataRepo.FindTById(BetBotDataId)
 	if err != nil {
 		log.Println(err)
-		api.Response.ServerError(w, "")
+		gouse.Response.ServerError(w, "")
 		return
 	}
 
 	log.Println("Decompressing Data", 5)
 	decompressedDbData, err := fsdStringCompressor.Decompress(compressedData.Data)
 	if err != nil {
-		api.Response.ServerError(w)
+		gouse.Response.ServerError(w)
 		return
 	}
 
@@ -105,13 +109,13 @@ var handleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	packagedData, err := bbcore.NewStatCalculator(decompressedDbData).CalculateAndPackage()
 	if err != nil {
 		log.Println("", err)
-		api.Response.ServerError(w)
+		gouse.Response.ServerError(w)
 		return
 	}
 
 	log.Println("Gzipping payload", 5)
 
-	api.Response.Gzip(w, 200,
+	gouse.Response.Gzip(w, 200,
 		struct {
 			Meta int64
 			Data []bbcore.PackagedPlayer
@@ -127,13 +131,13 @@ var handleBBGet api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 /* Atomic bool for tracking whether or not the validation process is on going */
 var isWorking atomic.Bool
 
-var handleRevalidationPolling api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	api.Response.Ok(w, isWorking.Load())
+var handleRevalidationPolling gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+	gouse.Response.Ok(w, isWorking.Load())
 }
 
-var handleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var handleGetBBRevalidation gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	if isWorking.Load() {
-		api.Response.Ok(w, "Revalidation in progress")
+		gouse.Response.Ok(w, "Revalidation in progress")
 		return
 	}
 
@@ -190,7 +194,7 @@ var handleGetBBRevalidation api.HandlerFn = func(w http.ResponseWriter, r *http.
 
 	}()
 
-	api.Response.Ok(w, "Revalidation started")
+	gouse.Response.Ok(w, "Revalidation started")
 }
 
 /* Collect, Compute, Send (No state is saved) */
@@ -198,7 +202,7 @@ var handleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	//collect data
 	fsd, err := bbcore.CollectData()
 	if err != nil {
-		api.Response.ServerError(w)
+		gouse.Response.ServerError(w)
 		return
 	}
 
@@ -208,13 +212,13 @@ var handleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 	packagedData, err := bbcore.NewStatCalculator(fsd).CalculateAndPackage()
 	if err != nil {
 		log.Println("", err)
-		api.Response.ServerError(w)
+		gouse.Response.ServerError(w)
 		return
 	}
 
 	// Zip and return
 	log.Println("Gzipping payload", 5)
-	api.Response.Gzip(w, 200,
+	gouse.Response.Gzip(w, 200,
 		struct {
 			Meta string
 			Data []bbcore.PackagedPlayer
@@ -227,7 +231,7 @@ var handleBBValidateAndZip = func(w http.ResponseWriter, r *http.Request) {
 }
 
 // TODO impl pw hashing
-var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var handleUserLogin gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	type LoginPayload struct {
 		Username string
@@ -236,20 +240,20 @@ var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
-		api.Response.ServerError(w, "Failed to read body")
+		gouse.Response.ServerError(w, "Failed to read body")
 		return
 	}
 	defer r.Body.Close()
 
 	pl, err := core.Map[LoginPayload](bodyBytes)
 	if err != nil {
-		api.Response.ServerError(w, "Failed to read body")
+		gouse.Response.ServerError(w, "Failed to read body")
 		return
 	}
 
 	/* Validate body */
 	if pl.Username == "" || pl.Password == "" {
-		api.Response.BadRequest(w)
+		gouse.Response.BadRequest(w)
 		return
 	}
 
@@ -257,12 +261,12 @@ var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 
 	usr, err := userRepo.FindFirstT()
 	if err != nil {
-		api.Response.NotFound(w)
+		gouse.Response.NotFound(w)
 		return
 	}
 
 	if usr.Username != pl.Username || usr.Password != pl.Password {
-		api.Response.Unauthorized(w)
+		gouse.Response.Unauthorized(w)
 		return
 	}
 
@@ -272,9 +276,9 @@ var handleUserLogin api.HandlerFn = func(w http.ResponseWriter, r *http.Request)
 
 	jwt, err := jwt.CreateJWT(claims, time.Hour*48, core.EnvGetOrPanic("BB_JWT_SECRET"))
 	if err != nil {
-		api.Response.ServerError(w)
+		gouse.Response.ServerError(w)
 		return
 	}
 
-	api.Response.Ok(w, jwt)
+	gouse.Response.Ok(w, jwt)
 }

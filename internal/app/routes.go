@@ -3,8 +3,8 @@ package app
 import (
 	"net/http"
 
-	"github.com/RecursionExcursion/api-go/api"
 	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/gouse/gouse"
 	"github.com/recursionexcursion/dd-go-api/internal/betbot"
 	"github.com/recursionexcursion/dd-go-api/internal/cfbr"
 	"github.com/recursionexcursion/dd-go-api/internal/hash"
@@ -13,21 +13,21 @@ import (
 )
 
 // TODO rethink flow here, works but feels convoluted with repeated appends
-func routes() []api.RouteHandler {
+func routes() []gouse.RouteHandler {
 
-	var getbaseRoute = api.RouteHandler{
+	var getbaseRoute = gouse.RouteHandler{
 		MethodAndPath: "GET /",
-		Handler: api.HandlerFn(func(w http.ResponseWriter, r *http.Request) {
-			api.Response.Ok(w, "API Status: Healthy")
+		Handler: gouse.HandlerFn(func(w http.ResponseWriter, r *http.Request) {
+			gouse.Response.Ok(w, "API Status: Healthy")
 		}),
 		Middleware: globalMWChain,
 	}
 
-	var routes = []api.RouteHandler{getbaseRoute}
+	var routes = []gouse.RouteHandler{getbaseRoute}
 
 	routes = append(routes, betbot.BetbotRoutes(struct {
-		JwtChain []api.Middleware
-		KeyChain []api.Middleware
+		JwtChain []gouse.Middleware
+		KeyChain []gouse.Middleware
 	}{
 		JwtChain: append(globalMWChain, JWTAuthMW(core.EnvGetOrPanic("BB_JWT_SECRET"))),
 		KeyChain: append(globalMWChain, KeyAuthMW(core.EnvGetOrPanic("BB_API_KEY"))),
@@ -45,12 +45,12 @@ func routes() []api.RouteHandler {
 	return routes
 }
 
-var globalMWChain = func() []api.Middleware {
+var globalMWChain = func() []gouse.Middleware {
 	// geoParams := GeoLimitParams{
 	// 	// WhitelistCountryCodes: strings.Split(lib.EnvGet("CC_WHITELIST"), ","),
 	// }
 
-	globalMWChain := []api.Middleware{
+	globalMWChain := []gouse.Middleware{
 		LoggerMW,
 		// GeoLimitMW(geoParams),
 		RateLimitMW,
