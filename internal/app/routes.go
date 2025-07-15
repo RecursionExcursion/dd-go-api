@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/RecursionExcursion/go-toolkit/core"
@@ -37,8 +38,8 @@ func routes() []gouse.RouteHandler {
 
 	routes = append(routes, cfbr.CfbrRoutes(globalMWChain)...)
 
-	routes = append(routes, pickle.PickleRoutes(append(globalMWChain, JWTAuthMW(core.EnvGetOrPanic("PICKLE_SECRET"))))...)
-	routes = append(routes, pickle.PickleLoginRoute(globalMWChain)...)
+	routes = append(routes, pickle.SecuredPickleRoutes(append(globalMWChain, JWTAuthMW(core.EnvGetOrPanic("PICKLE_SECRET"))))...)
+	routes = append(routes, pickle.PublicPickleRoutes(globalMWChain)...)
 
 	routes = append(routes, hash.HashRoutes(globalMWChain)...)
 
@@ -51,7 +52,7 @@ var globalMWChain = func() []gouse.Middleware {
 	// }
 
 	globalMWChain := []gouse.Middleware{
-		LoggerMW,
+		gouse.LoggerMW(log.Default()),
 		// GeoLimitMW(geoParams),
 		RateLimitMW,
 	}

@@ -53,6 +53,7 @@ var postHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 	}
 	hash := sha256.Sum256([]byte(s.Message))
 	resp := HashResponse{Hash: hex.EncodeToString(hash[:])}
+
 	gouse.Response.Created(w, resp)
 }
 

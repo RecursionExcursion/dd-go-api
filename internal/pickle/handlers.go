@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func PickleRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
+func SecuredPickleRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 
 	picklePlayerEndpoints := gouse.NewPathBuilder("/pickle/player")
 
@@ -29,12 +29,6 @@ func PickleRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 		Handler:       getPlayersHandler,
 		Middleware:    mwChain,
 	}
-
-	// updatePlayer := api.RouteHandler{
-	// 	MethodAndPath: picklePlayerEndpoints().PUT,
-
-	// 	Middleware: mwChain,
-	// }
 
 	deletePlayer := gouse.RouteHandler{
 		MethodAndPath: picklePlayerEndpoints.Methods().DELETE,
@@ -74,7 +68,7 @@ func PickleRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 	}
 }
 
-func PickleLoginRoute(mwChain []gouse.Middleware) []gouse.RouteHandler {
+func PublicPickleRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
 	pickleAuthEndpoints := gouse.NewPathBuilder("/pickle/auth")
 
 	login := gouse.RouteHandler{
@@ -82,7 +76,16 @@ func PickleLoginRoute(mwChain []gouse.Middleware) []gouse.RouteHandler {
 		Handler:       loginHandler,
 		Middleware:    mwChain,
 	}
+
+	getPickle := gouse.RouteHandler{
+		MethodAndPath: "GET /pickle",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		},
+		Middleware: mwChain,
+	}
 	return []gouse.RouteHandler{
+		getPickle,
 		login,
 	}
 

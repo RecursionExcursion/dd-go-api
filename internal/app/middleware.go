@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
 	"slices"
 
@@ -14,19 +13,6 @@ import (
 	"github.com/RecursionExcursion/gouse/gouse"
 	"golang.org/x/time/rate"
 )
-
-func LoggerMW(next gouse.HandlerFn) gouse.HandlerFn {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		remote := r.RemoteAddr
-		accessedPath := r.Host + r.RequestURI
-		time := time.Now().Format("2006-01-02 15:04:05")
-
-		log.Printf("%v accessed %v at %v", remote, accessedPath, time)
-
-		next(w, r)
-	}
-}
 
 func KeyAuthMW(key string) gouse.Middleware {
 	return func(next gouse.HandlerFn) gouse.HandlerFn {
