@@ -242,8 +242,8 @@ var loginHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) 
 	claims := map[string]any{
 		"sub": creds.Username,
 	}
-
-	jwt, err := jwt.CreateJWT(claims, time.Hour*24, core.EnvGetOrPanic("PICKLE_SECRET"))
+	jwtDur := time.Hour * 24 * 7
+	jwt, err := jwt.CreateJWT(claims, jwtDur, core.EnvGetOrPanic("PICKLE_SECRET"))
 	if err != nil {
 		gouse.Response.ServerError(w)
 		return
