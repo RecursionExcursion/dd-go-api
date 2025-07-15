@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"github.com/RecursionExcursion/go-toolkit/core"
+	"github.com/RecursionExcursion/gogen/gogen"
 	"github.com/RecursionExcursion/gouse/gouse"
-	"github.com/RecursionExcursion/wsd-core/pkg"
 )
 
 func WsdRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
@@ -52,7 +52,7 @@ var postWsdBuildHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	params, err := core.Map[pkg.CreateExeParams](bodyBytes)
+	params, err := core.Map[gogen.CreateExeParams](bodyBytes)
 	if err != nil {
 		gouse.Response.ServerError(w, "Failed to map body")
 		return
@@ -69,18 +69,19 @@ var postWsdBuildHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	binPath, name, err := pkg.CreateGoExe(params)
+	binPath, name, cleanup, err := gogen.GenerateGoExe(params)
 	// binPath, name, err := core.CreateGoExe(params)
 	if err != nil {
 		panic(err)
 	}
 
 	gouse.Response.StreamFile(w, 200, binPath, name)
+	cleanup()
 }
 
-var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, _ *http.Request) {
 
-	testParams := pkg.CreateExeParams{
+	testParams := gogen.CreateExeParams{
 		Arch: "win",
 		Commands: []string{
 			"url:www.facebook.com",
@@ -89,7 +90,8 @@ var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 		},
 	}
 
-	bin, name, err := pkg.CreateGoExe(testParams)
+	bin, name, cleanup, err := gogen.GenerateGoExe(testParams)
+	defer cleanup()
 	if err != nil {
 		panic(err)
 	}
@@ -99,7 +101,7 @@ var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Requ
 var getSupportedOsHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
 	keys := []string{}
-	for k := range pkg.SupportedArchitecture {
+	for k := range gogen.SupportedArchitecture {
 		keys = append(keys, k)
 	}
 
