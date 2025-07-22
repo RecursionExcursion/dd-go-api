@@ -69,14 +69,14 @@ var postWsdBuildHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	binPath, name, cleanup, err := gogen.GenerateGoExe(params)
+	ret, err := gogen.GenerateGoExe(params)
 	// binPath, name, err := core.CreateGoExe(params)
 	if err != nil {
 		panic(err)
 	}
 
-	gouse.Response.StreamFile(w, 200, binPath, name)
-	cleanup()
+	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
+	ret.Cleanup()
 }
 
 var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, _ *http.Request) {
@@ -90,12 +90,12 @@ var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, _ *http.Requ
 		},
 	}
 
-	bin, name, cleanup, err := gogen.GenerateGoExe(testParams)
-	defer cleanup()
+	ret, err := gogen.GenerateGoExe(testParams)
 	if err != nil {
 		panic(err)
 	}
-	gouse.Response.StreamFile(w, 200, bin, name)
+	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
+	ret.Cleanup()
 }
 
 var getSupportedOsHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {

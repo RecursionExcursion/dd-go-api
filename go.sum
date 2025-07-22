@@ -18,6 +18,8 @@ github.com/RecursionExcursion/gogen v0.0.0-20250715175155-27b9ce8ea874 h1:tkOsJm
 github.com/RecursionExcursion/gogen v0.0.0-20250715175155-27b9ce8ea874/go.mod h1:gQAU0H+dzZFI0yyyRDGBosvDvjpYBAQgsS8yDG5s3eE=
 github.com/RecursionExcursion/gogen v0.0.0-20250715175626-602da23e6e56 h1:dKCXVRbA9A87nfqj9xaUr0OiezeIBj9B7MZCcUxq800=
 github.com/RecursionExcursion/gogen v0.0.0-20250715175626-602da23e6e56/go.mod h1:gQAU0H+dzZFI0yyyRDGBosvDvjpYBAQgsS8yDG5s3eE=
+github.com/RecursionExcursion/gogen v0.0.0-20250722173354-301e283a38d9 h1:ABodA8Rbj9c/2DoKDOheApqIHqNNHr24rE2xAkxdEbU=
+github.com/RecursionExcursion/gogen v0.0.0-20250722173354-301e283a38d9/go.mod h1:gQAU0H+dzZFI0yyyRDGBosvDvjpYBAQgsS8yDG5s3eE=
 github.com/RecursionExcursion/gouse v1.0.0 h1:svr8F0O6EDv3ix2prMt2k/+oCHGKiU2lCRWNw6DnPRs=
 github.com/RecursionExcursion/gouse v1.0.0/go.mod h1:6dAGTBl7q9tgMO8oym/7Q34vphWzy0U/IyBmG65ZeMk=
 github.com/andybalholm/brotli v1.1.1 h1:PR2pgnyFznKEugtsUo0xLdDop5SKXd5Qf5ysW+7XdTA=
