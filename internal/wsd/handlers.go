@@ -1,6 +1,7 @@
 package wsd
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
@@ -72,7 +73,9 @@ var postWsdBuildHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Re
 	ret, err := gogen.GenerateGoExe(params)
 	// binPath, name, err := core.CreateGoExe(params)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
+		gouse.Response.ServerError(w)
+		return
 	}
 
 	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
