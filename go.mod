@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/RecursionExcursion/cfbr-core-go v0.0.0-20251027182434-d98a9ce23fa4 // indirect
+	github.com/RecursionExcursion/cfbr-core-go v0.0.0-20251028163232-ece66631065a // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

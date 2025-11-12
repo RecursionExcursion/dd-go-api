@@ -10,44 +10,18 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// type CfbrRepo = mongo.MongoConnection[SerializeableCompressedSeason]
-
-// func CfbrRepository() CfbrRepo {
-
-// 	connString := core.EnvGetOrPanic("NEON_CONNECTION")
-
-// 	conn, err := pgx.Connect(context.Background(), connString)
-// 	if err != nil {
-// 		log.Fatalf("unable to connect to database: %v", err)
-// 	}
-
-// 	repo := CfbrRepo{
-// 		conn: conn,
-// 	}
-
-// 	repo.createTable()
-
-// 	// dbName := core.EnvGetOrPanic("DB_NAME_CFBR")
-// 	// return CfbrRepo{
-// 	// 	Db:         dbName,
-// 	// 	Collection: "seasons",
-// 	// }
-
-// 	return repo
-// }
-
 var tableName = "cfbr_seasons"
 
 type CfbrRepo struct {
 	conn *pgx.Conn
 }
 
-func CfbrRepository() CfbrRepo {
+func CfbrRepository() (CfbrRepo, error) {
 	connString := core.EnvGetOrPanic("NEON_CONNECTION")
 
 	conn, err := pgx.Connect(context.Background(), connString)
 	if err != nil {
-		log.Fatalf("unable to connect to database: %v", err)
+		return CfbrRepo{}, err
 	}
 
 	repo := CfbrRepo{
@@ -56,43 +30,57 @@ func CfbrRepository() CfbrRepo {
 
 	repo.createTable()
 
-	// dbName := core.EnvGetOrPanic("DB_NAME_CFBR")
-	// return CfbrRepo{
-	// 	Db:         dbName,
-	// 	Collection: "seasons",
-	// }
-
-	return repo
+	return repo, nil
 }
 
-func (repo *CfbrRepo) createTable() {
+func (repo *CfbrRepo) createTable() error {
 
-	qry := fmt.Sprintf(`CREATE TABLE %v (
+	qry := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS %v (
     id TEXT PRIMARY KEY,
     year INT NOT NULL,
     created_at BIGINT NOT NULL,
-    compressed_season BYTEA NOT NULL`, tableName)
+    compressed_season BYTEA NOT NULL
+	)`, tableName)
 
 	_, err := repo.conn.Exec(context.Background(), qry)
 	if err != nil {
-		log.Fatalf("failed to create table: %v", err)
+		return err
 	}
 
 	log.Println("Table created (if not exists).")
+	return nil
 }
 
-func (repo *CfbrRepo) insert(szn SerializeableCompressedSeason) {
+func (repo *CfbrRepo) insert(szn SerializeableCompressedSeason) error {
 	qry := fmt.Sprintf(`INSERT INTO %v (id, year, created_at, compressed_season)
      VALUES ($1, $2, $3, $4)`, tableName)
 
 	_, err := repo.conn.Exec(
 		context.Background(), qry,
-		"season-2025",
-		2025,
+		szn.Id,
+		szn.Year,
 		time.Now().Unix(),
-		szn,
+		szn.CompressedSeason,
 	)
+
+	return err
+}
+
+func (repo *CfbrRepo) get(id string) (SerializeableCompressedSeason, error) {
+	qry := fmt.Sprintf(`SELECT id, year, created_at, compressed_season
+	 FROM %v 
+	 WHERE id=$1`,
+		tableName)
+
+	szn := SerializeableCompressedSeason{}
+
+	err := repo.conn.QueryRow(context.Background(), qry, id).Scan(
+		&szn.Id,
+		&szn.Year,
+		&szn.CreatedAt,
+		&szn.CompressedSeason)
 	if err != nil {
-		log.Fatal(err)
+		return szn, err
 	}
+	return szn, nil
 }
