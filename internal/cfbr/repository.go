@@ -52,8 +52,15 @@ func (repo *CfbrRepo) createTable() error {
 }
 
 func (repo *CfbrRepo) insert(szn SerializeableCompressedSeason) error {
-	qry := fmt.Sprintf(`INSERT INTO %v (id, year, created_at, compressed_season)
-     VALUES ($1, $2, $3, $4)`, tableName)
+	qry := fmt.Sprintf(`
+	INSERT INTO %v (id, year, created_at, compressed_season)
+    VALUES ($1, $2, $3, $4)
+	ON CONFLICT (id) DO UPDATE
+	SET
+		year = EXCLUDED.year,
+		created_at = EXCLUDED.created_at,
+		compressed_season = EXCLUDED.compressed_season;	 
+	 `, tableName)
 
 	_, err := repo.conn.Exec(
 		context.Background(), qry,

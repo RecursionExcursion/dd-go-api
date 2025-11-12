@@ -3,6 +3,7 @@ package cfbr
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -17,7 +18,7 @@ import (
 
 type ApiSeasonData struct {
 	SeasonInfo cfbrcore.SeasonInfo
-	GameData   []cfbrcore.GameData
+	GameData   map[string]cfbrcore.GameData
 }
 
 type SerializeableCompressedSeason struct {
@@ -28,6 +29,7 @@ type SerializeableCompressedSeason struct {
 }
 
 //TODO write cache
+
 // type SeasonCache map[int]model.Season
 
 // func (sc *SeasonCache) getSeason(yr int) (model.Season, bool) {
@@ -147,6 +149,7 @@ func handleGetSeasonData(w http.ResponseWriter, r *http.Request) {
 
 	queriedSeason, err := repo.get(yr)
 	if err != nil {
+		log.Println("Season not found, scraping season data")
 		collectedSeason, err := cfbrcore.CollectSeason(intYr, cfbrcore.ScraperOptions{
 			Logger: logger,
 		})
@@ -158,61 +161,118 @@ func handleGetSeasonData(w http.ResponseWriter, r *http.Request) {
 
 		sznData := ApiSeasonData{
 			SeasonInfo: collectedSeason,
-			GameData:   []cfbrcore.GameData{},
+			GameData:   map[string]cfbrcore.GameData{},
 		}
 
-		compressed, err := seasonCompressor.Compress(sznData)
+		err = saveSeason(repo, sznData, intYr)
 		if err != nil {
-			log.Println(err)
-			gouse.Response.ServerError(w, "Error during compressiong")
+			gouse.Response.ServerError(w)
 			return
 		}
 
-		sSzn := SerializeableCompressedSeason{
-			Id:               yr,
-			Year:             intYr,
-			CreatedAt:        time.Now().UnixMilli(),
-			CompressedSeason: compressed,
-		}
-
-		err = repo.insert(sSzn)
-		if err != nil {
-			log.Println(err)
-			gouse.Response.ServerError(w, "Error during SQL data insertion")
-			return
-		}
 		gouse.Response.Ok(w, sznData)
 		return
 	}
+
+	fmt.Println("Season found!")
 	decompressedSeason, err := seasonCompressor.Decompress(queriedSeason.CompressedSeason)
 	if err != nil {
 		log.Println(err)
 		gouse.Response.ServerError(w)
 		return
 	}
-	gouse.Response.Ok(w, decompressedSeason)
+	gouse.Response.Ok(w, decompressedSeason.SeasonInfo)
 }
 
 func handleScrapeGameData(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	var p []string
-
-	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-		gouse.Response.BadRequest(w, " Expected payload of game ids")
+	yr, ok, msg := extractYrQueryParam(r)
+	if !ok {
+		gouse.Response.BadRequest(w, msg)
 		return
 	}
 
-	gms, err := cfbrcore.CollectGames(p, cfbrcore.ScraperOptions{
-		Logger: logger,
-	})
+	intYr, err := strconv.Atoi(yr)
+	if err != nil {
+		gouse.Response.BadRequest(w, "Invalid query params")
+		return
+	}
+
+	repo, err := CfbrRepository()
 	if err != nil {
 		log.Println(err)
 		gouse.Response.ServerError(w)
 		return
 	}
 
-	gouse.Response.Ok(w, gms)
+	//TODO Clean this shit up!!!!
+	var ids []string
+
+	if err := json.NewDecoder(r.Body).Decode(&ids); err != nil {
+		gouse.Response.BadRequest(w, " Expected payload of game ids")
+		return
+	}
+
+	queriedSeason, err := repo.get(yr)
+	if err != nil {
+		// //TODO cant really happen as the game ids cant be known without seasoninfo being scraped
+		gouse.Response.NotFound(w)
+		return
+	}
+
+	//season found
+	decompressedSeason, err := seasonCompressor.Decompress(queriedSeason.CompressedSeason)
+	if err != nil {
+		log.Println(err)
+		gouse.Response.ServerError(w)
+		return
+	}
+
+	gameData := map[string]cfbrcore.GameData{}
+	idsToCollect := []string{}
+
+	fmt.Printf("Games queried %v\n", len(decompressedSeason.GameData))
+
+	for _, id := range ids {
+		d, ok := decompressedSeason.GameData[id]
+		if !ok {
+			idsToCollect = append(idsToCollect, id)
+		} else {
+			gameData[id] = d
+		}
+	}
+
+	//Games requested that arent yet in db
+	if len(idsToCollect) > 0 {
+		gms, err := cfbrcore.CollectGames(idsToCollect, cfbrcore.ScraperOptions{
+			Logger: logger,
+		})
+		if err != nil {
+			log.Println(err)
+			gouse.Response.ServerError(w)
+			return
+		}
+
+		//add to return obj and perstence ref
+		for _, g := range gms {
+			gameData[g.Header.Id] = g
+			decompressedSeason.GameData[g.Header.Id] = g
+		}
+
+		sznData := ApiSeasonData{
+			SeasonInfo: decompressedSeason.SeasonInfo,
+			GameData:   decompressedSeason.GameData,
+		}
+
+		err = saveSeason(repo, sznData, intYr)
+		if err != nil {
+			gouse.Response.ServerError(w)
+			return
+		}
+	}
+
+	gouse.Response.Ok(w, gameData)
 }
 
 /* Returns (param, success, error msg) */
@@ -222,4 +282,30 @@ func extractYrQueryParam(r *http.Request) (string, bool, string) {
 		return "", false, "Invalid query params"
 	}
 	return yr, true, ""
+}
+
+func saveSeason(repo CfbrRepo, sznData ApiSeasonData, intYr int) error {
+	log.Println("Inserting season")
+	compressed, err := seasonCompressor.Compress(sznData)
+	if err != nil {
+		log.Println("Error during compressiong")
+		log.Println(err)
+		return err
+	}
+
+	sSzn := SerializeableCompressedSeason{
+		Id:               fmt.Sprintf("%v", intYr),
+		Year:             intYr,
+		CreatedAt:        time.Now().UnixMilli(),
+		CompressedSeason: compressed,
+	}
+
+	err = repo.insert(sSzn)
+	if err != nil {
+		log.Println("Error during SQL data insertion")
+		log.Println(err)
+		return err
+	}
+
+	return nil
 }
