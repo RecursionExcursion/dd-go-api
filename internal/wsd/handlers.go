@@ -1,112 +1,114 @@
 package wsd
 
-import (
-	"fmt"
-	"io"
-	"net/http"
+/* TODO Obsolete */
 
-	"github.com/RecursionExcursion/go-toolkit/core"
-	"github.com/RecursionExcursion/gogen/gogen"
-	"github.com/RecursionExcursion/gouse/gouse"
-)
+// import (
+// 	"fmt"
+// 	"io"
+// 	"net/http"
 
-func WsdRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
-	var postWsdHome = gouse.RouteHandler{
-		MethodAndPath: "POST /wsd/build",
-		Handler:       postWsdBuildHandler,
-		Middleware:    mwChain,
-	}
+// 	"github.com/RecursionExcursion/go-toolkit/core"
+// 	"github.com/RecursionExcursion/gogen/gogen"
+// 	"github.com/RecursionExcursion/gouse/gouse"
+// )
 
-	getSupportedOs := gouse.RouteHandler{
-		MethodAndPath: "GET /wsd/os",
-		Handler:       getSupportedOsHandler,
-		Middleware:    mwChain,
-	}
+// func WsdRoutes(mwChain []gouse.Middleware) []gouse.RouteHandler {
+// 	var postWsdHome = gouse.RouteHandler{
+// 		MethodAndPath: "POST /wsd/build",
+// 		Handler:       postWsdBuildHandler,
+// 		Middleware:    mwChain,
+// 	}
 
-	routes := gouse.RouteHandler{
-		MethodAndPath: "GET /wsd/routes",
-		Handler: func(w http.ResponseWriter, r *http.Request) {
+// 	getSupportedOs := gouse.RouteHandler{
+// 		MethodAndPath: "GET /wsd/os",
+// 		Handler:       getSupportedOsHandler,
+// 		Middleware:    mwChain,
+// 	}
 
-			routeMap := map[string]string{
-				"getOs":     "/wsd/os",
-				"postBuild": "/wsd/build",
-			}
+// 	routes := gouse.RouteHandler{
+// 		MethodAndPath: "GET /wsd/routes",
+// 		Handler: func(w http.ResponseWriter, r *http.Request) {
 
-			gouse.Response.Ok(w, routeMap)
-		},
-		Middleware: mwChain,
-	}
+// 			routeMap := map[string]string{
+// 				"getOs":     "/wsd/os",
+// 				"postBuild": "/wsd/build",
+// 			}
 
-	return []gouse.RouteHandler{
-		postWsdHome,
-		getSupportedOs,
-		routes,
-	}
-}
+// 			gouse.Response.Ok(w, routeMap)
+// 		},
+// 		Middleware: mwChain,
+// 	}
 
-var postWsdBuildHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+// 	return []gouse.RouteHandler{
+// 		postWsdHome,
+// 		getSupportedOs,
+// 		routes,
+// 	}
+// }
 
-	bodyBytes, err := io.ReadAll(r.Body)
-	if err != nil {
-		gouse.Response.ServerError(w, "Failed to read body")
-		return
-	}
+// var postWsdBuildHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+// 	defer r.Body.Close()
 
-	params, err := core.Map[gogen.CreateExeParams](bodyBytes)
-	if err != nil {
-		gouse.Response.ServerError(w, "Failed to map body")
-		return
-	}
+// 	bodyBytes, err := io.ReadAll(r.Body)
+// 	if err != nil {
+// 		gouse.Response.ServerError(w, "Failed to read body")
+// 		return
+// 	}
 
-	// Validate body
-	if params.Arch == "" {
-		gouse.Response.BadRequest(w, "No arch provided")
-		return
-	}
+// 	params, err := core.Map[gogen.CreateExeParams](bodyBytes)
+// 	if err != nil {
+// 		gouse.Response.ServerError(w, "Failed to map body")
+// 		return
+// 	}
 
-	if len(params.Commands) == 0 {
-		gouse.Response.BadRequest(w, "No commands provided")
-		return
-	}
+// 	// Validate body
+// 	if params.Arch == "" {
+// 		gouse.Response.BadRequest(w, "No arch provided")
+// 		return
+// 	}
 
-	ret, err := gogen.GenerateGoExe(params)
-	// binPath, name, err := core.CreateGoExe(params)
-	if err != nil {
-		fmt.Println(err)
-		gouse.Response.ServerError(w)
-		return
-	}
+// 	if len(params.Commands) == 0 {
+// 		gouse.Response.BadRequest(w, "No commands provided")
+// 		return
+// 	}
 
-	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
-	ret.Cleanup()
-}
+// 	ret, err := gogen.GenerateGoExe(params)
+// 	// binPath, name, err := core.CreateGoExe(params)
+// 	if err != nil {
+// 		fmt.Println(err)
+// 		gouse.Response.ServerError(w)
+// 		return
+// 	}
 
-var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, _ *http.Request) {
+// 	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
+// 	ret.Cleanup()
+// }
 
-	testParams := gogen.CreateExeParams{
-		Arch: "win",
-		Commands: []string{
-			"url:www.facebook.com",
-			"url:www.chatgpt.com",
-			"cmd:code C:/Users/rloup/dev/workspaces/vsc/xpres",
-		},
-	}
+// var getWsdTestHandler gouse.HandlerFn = func(w http.ResponseWriter, _ *http.Request) {
 
-	ret, err := gogen.GenerateGoExe(testParams)
-	if err != nil {
-		panic(err)
-	}
-	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
-	ret.Cleanup()
-}
+// 	testParams := gogen.CreateExeParams{
+// 		Arch: "win",
+// 		Commands: []string{
+// 			"url:www.facebook.com",
+// 			"url:www.chatgpt.com",
+// 			"cmd:code C:/Users/rloup/dev/workspaces/vsc/xpres",
+// 		},
+// 	}
 
-var getSupportedOsHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
+// 	ret, err := gogen.GenerateGoExe(testParams)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	gouse.Response.StreamFile(w, 200, ret.BinPath, ret.ExeName)
+// 	ret.Cleanup()
+// }
 
-	keys := []string{}
-	for k := range gogen.SupportedArchitecture {
-		keys = append(keys, k)
-	}
+// var getSupportedOsHandler gouse.HandlerFn = func(w http.ResponseWriter, r *http.Request) {
 
-	gouse.Response.Ok(w, keys)
-}
+// 	keys := []string{}
+// 	for k := range gogen.SupportedArchitecture {
+// 		keys = append(keys, k)
+// 	}
+
+// 	gouse.Response.Ok(w, keys)
+// }

@@ -13,19 +13,19 @@ import (
 var tableName = "cfbr_seasons"
 
 type CfbrRepo struct {
-	conn *pgx.Conn
+	Conn *pgx.Conn
 }
 
-func CfbrRepository() (CfbrRepo, error) {
+func CfbrRepository(ctx context.Context) (CfbrRepo, error) {
 	connString := core.EnvGetOrPanic("NEON_CONNECTION")
 
-	conn, err := pgx.Connect(context.Background(), connString)
+	conn, err := pgx.Connect(ctx, connString)
 	if err != nil {
 		return CfbrRepo{}, err
 	}
 
 	repo := CfbrRepo{
-		conn: conn,
+		Conn: conn,
 	}
 
 	repo.createTable()
@@ -42,7 +42,7 @@ func (repo *CfbrRepo) createTable() error {
     compressed_season BYTEA NOT NULL
 	)`, tableName)
 
-	_, err := repo.conn.Exec(context.Background(), qry)
+	_, err := repo.Conn.Exec(context.Background(), qry)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func (repo *CfbrRepo) insert(szn SerializeableCompressedSeason) error {
 		compressed_season = EXCLUDED.compressed_season;	 
 	 `, tableName)
 
-	_, err := repo.conn.Exec(
+	_, err := repo.Conn.Exec(
 		context.Background(), qry,
 		szn.Id,
 		szn.Year,
@@ -81,7 +81,7 @@ func (repo *CfbrRepo) get(id string) (SerializeableCompressedSeason, error) {
 
 	szn := SerializeableCompressedSeason{}
 
-	err := repo.conn.QueryRow(context.Background(), qry, id).Scan(
+	err := repo.Conn.QueryRow(context.Background(), qry, id).Scan(
 		&szn.Id,
 		&szn.Year,
 		&szn.CreatedAt,

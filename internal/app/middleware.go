@@ -14,8 +14,20 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func KeyAuthMW(key string) gouse.Middleware {
-	return func(next gouse.HandlerFn) gouse.HandlerFn {
+type handler = func(w http.ResponseWriter, r *http.Request)
+type middleware = func(handler) handler
+
+func pipe(mws ...middleware) middleware {
+	return func(hndlr handler) handler {
+		for i := len(mws) - 1; i >= 0; i-- {
+			hndlr = mws[i](hndlr)
+		}
+		return hndlr
+	}
+}
+
+func KeyAuthMW(key string) middleware {
+	return func(next handler) handler {
 		return func(w http.ResponseWriter, r *http.Request) {
 			token := r.Header.Get(("Authorization"))
 			parts := strings.SplitN(token, " ", 2)
@@ -30,8 +42,8 @@ func KeyAuthMW(key string) gouse.Middleware {
 	}
 }
 
-func JWTAuthMW(key string) gouse.Middleware {
-	return func(next gouse.HandlerFn) gouse.HandlerFn {
+func JWTAuthMW(key string) middleware {
+	return func(next handler) handler {
 		return func(w http.ResponseWriter, r *http.Request) {
 			token := r.Header.Get(("Authorization"))
 			parts := strings.SplitN(token, " ", 2)
@@ -50,7 +62,7 @@ func JWTAuthMW(key string) gouse.Middleware {
 	}
 }
 
-func RateLimitMW(next gouse.HandlerFn) gouse.HandlerFn {
+func RateLimitMW(next handler) handler {
 	// refil rate 5/sec, total bucket size is 10
 	var limiter = rate.NewLimiter(5, 10)
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -72,8 +84,8 @@ type GeoLimitParams struct {
 	BlacklistZipCodes []string
 }
 
-func GeoLimitMW(params GeoLimitParams) gouse.Middleware {
-	return func(next gouse.HandlerFn) gouse.HandlerFn {
+func GeoLimitMW(params GeoLimitParams) middleware {
+	return func(next handler) handler {
 		type GeoLimitData struct {
 			Query         string `json:"query"`
 			Status        string `json:"status"`

@@ -1,5 +1,7 @@
 package pickle
 
+/* TODO Package is possibly obsolete */
+
 import (
 	"log"
 	"math/rand"
