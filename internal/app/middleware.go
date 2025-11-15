@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"slices"
 
@@ -23,6 +24,16 @@ func pipe(mws ...middleware) middleware {
 			hndlr = mws[i](hndlr)
 		}
 		return hndlr
+	}
+}
+
+func LoggerMW(logger *log.Logger) middleware {
+	return func(next handler) handler {
+		return func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			next(w, r)
+			logger.Printf("%v %v accessed %v in %v", r.Method, r.URL.Path, r.RemoteAddr, time.Since(start))
+		}
 	}
 }
 
@@ -62,15 +73,17 @@ func JWTAuthMW(key string) middleware {
 	}
 }
 
-func RateLimitMW(next handler) handler {
-	// refil rate 5/sec, total bucket size is 10
-	var limiter = rate.NewLimiter(5, 10)
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.Allow() {
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
-			return
+// refil rate /sec, total bucket size
+func RateLimitMW(refillRate int, size int) middleware {
+	return func(next handler) handler {
+		var limiter = rate.NewLimiter(rate.Limit(refillRate), 10)
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !limiter.Allow() {
+				http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+				return
+			}
+			next(w, r)
 		}
-		next(w, r)
 	}
 }
 
@@ -101,6 +114,27 @@ func GeoLimitMW(params GeoLimitParams) middleware {
 			ContinentCode string `json:"continentCode"`
 		}
 
+		isBlackListed := func(p GeoLimitParams, d GeoLimitData) bool {
+			return slices.Contains(p.BlacklistCountryCodes, d.CountryCode) ||
+				slices.Contains(p.BlacklistContinentCodes, d.ContinentCode)
+		}
+
+		isWhitelisted := func(p GeoLimitParams, d GeoLimitData) bool {
+			if params.WhitelistContinentCodes != nil {
+				if !slices.Contains(p.WhitelistContinentCodes, d.ContinentCode) {
+					return false
+				}
+			}
+
+			if params.WhitelistCountryCodes != nil {
+				if !slices.Contains(p.WhitelistCountryCodes, d.CountryCode) {
+					return false
+				}
+			}
+
+			return true
+		}
+
 		return func(w http.ResponseWriter, r *http.Request) {
 			addr := r.RemoteAddr
 
@@ -117,28 +151,7 @@ func GeoLimitMW(params GeoLimitParams) middleware {
 				return
 			}
 
-			isBlackListed := func() bool {
-				return slices.Contains(params.BlacklistCountryCodes, data.CountryCode) ||
-					slices.Contains(params.BlacklistContinentCodes, data.ContinentCode)
-			}
-
-			isWhitelisted := func() bool {
-				if params.WhitelistContinentCodes != nil {
-					if !slices.Contains(params.WhitelistContinentCodes, data.ContinentCode) {
-						return false
-					}
-				}
-
-				if params.WhitelistCountryCodes != nil {
-					if !slices.Contains(params.WhitelistCountryCodes, data.CountryCode) {
-						return false
-					}
-				}
-
-				return true
-			}
-
-			if isBlackListed() || !isWhitelisted() {
+			if isBlackListed(params, data) || !isWhitelisted(params, data) {
 				gouse.Response.Forbidden(w, "")
 				return
 			}
