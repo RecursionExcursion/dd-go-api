@@ -34,6 +34,7 @@ type SerializeableCompressedSeason struct {
 
 var cache = seasonCache{}
 
+// TODO consdier just using the built in postgress compression
 var seasonCompressor = struct {
 	Compress   func(d ApiSeasonData) ([]byte, error)
 	Decompress func([]byte) (ApiSeasonData, error)
@@ -225,6 +226,7 @@ func unmarshalBody[T any](r *http.Request) (T, error) {
 }
 
 func readSeason(repo *CfbrRepo, yr string) (ApiSeasonData, error) {
+	log.Println("Querying Szn from db")
 	queriedSeason, err := repo.get(yr)
 	if err != nil {
 		return ApiSeasonData{}, err
@@ -234,12 +236,15 @@ func readSeason(repo *CfbrRepo, yr string) (ApiSeasonData, error) {
 		return ApiSeasonData{}, err
 	}
 	cache.set(szn)
+	log.Println("Cache set")
 	return szn, nil
 }
 
 func writeSeason(repo *CfbrRepo, szn ApiSeasonData, intYr int) error {
 	cache.set(szn)
-	log.Println("Inserting season")
+	log.Println("Cache set")
+
+	log.Println("Inserting season into db")
 	compressed, err := seasonCompressor.Compress(szn)
 	if err != nil {
 		log.Println("Error during compressiong")
