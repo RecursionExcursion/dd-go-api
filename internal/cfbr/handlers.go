@@ -165,8 +165,6 @@ func (h *CfbrHandler) CFBRPost(w http.ResponseWriter, r *http.Request) {
 
 	idsToCollect := []string{}
 
-	fmt.Printf("Games queried %v\n", len(decompressedSeason.GameData))
-
 	for _, id := range ids {
 		d, ok := decompressedSeason.GameData[id]
 		if !ok {
