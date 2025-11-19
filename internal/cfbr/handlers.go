@@ -178,6 +178,7 @@ func (h *CfbrHandler) CFBRPost(w http.ResponseWriter, r *http.Request) {
 
 	//Games requested that arent yet in db
 	if len(idsToCollect) > 0 {
+		log.Printf("Games missing! Scraping %v games\n", len(idsToCollect))
 		gms, err := cfbrcore.CollectGames(idsToCollect, cfbrcore.ScraperOptions{
 			Logger: logger,
 		})
@@ -187,7 +188,7 @@ func (h *CfbrHandler) CFBRPost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		//add to return obj and perstence ref
+		//add to return obj and persistence
 		for _, g := range gms {
 			gameData[g.Header.Id] = g
 			decompressedSeason.GameData[g.Header.Id] = g
